@@ -5,12 +5,15 @@
  */
 import { spawnSync } from "node:child_process";
 import { globSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const srcDir = join(root, "src");
+const aliasLoaderUrl = pathToFileURL(
+  join(root, "scripts", "test-esm-alias-loader.mjs")
+).href;
 
 function isUnderTestIntegration(relPath) {
   const n = relPath.replaceAll("\\", "/");
@@ -33,6 +36,8 @@ const result = spawnSync(
   process.execPath,
   [
     "--experimental-strip-types",
+    "--loader",
+    aliasLoaderUrl,
     "--experimental-test-coverage",
     "--test",
     ...files
