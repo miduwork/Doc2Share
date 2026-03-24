@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { isCurrentSessionValid } from "@/lib/session";
+import { isSingleSessionValidForCurrentUser } from "@/lib/auth/single-session";
 import { canManageDocuments } from "@/lib/admin/guards-core";
-import SecureReader from "@/components/SecureReader";
+import SecureReader from "@/features/documents/read/components/SecureReader";
 import Link from "next/link";
 
 interface Props {
@@ -13,7 +13,7 @@ export default async function ReadDocumentPage({ params }: Props) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (user && !(await isCurrentSessionValid())) {
+  if (user && !(await isSingleSessionValidForCurrentUser())) {
     return (
       <div className="content-prose flex min-h-screen items-center justify-center">
         <p className="text-slate-600">
@@ -58,14 +58,14 @@ export default async function ReadDocumentPage({ params }: Props) {
     if (!perm) {
       return (
         <div className="content-prose flex min-h-screen items-center justify-center">
-          <p className="text-slate-600">Bạn chưa mua tài liệu này. <Link href="/tai-lieu">Mua ngay</Link>.</p>
+          <p className="text-slate-600">Bạn chưa mua tài liệu này. <Link href="/cua-hang">Mua ngay</Link>.</p>
         </div>
       );
     }
     if (perm.expires_at && new Date(perm.expires_at) < new Date()) {
       return (
         <div className="content-prose flex min-h-screen items-center justify-center">
-          <p className="text-slate-600">Quyền xem tài liệu đã hết hạn. <Link href="/tai-lieu">Mua lại</Link>.</p>
+          <p className="text-slate-600">Quyền xem tài liệu đã hết hạn. <Link href="/cua-hang">Mua lại</Link>.</p>
         </div>
       );
     }

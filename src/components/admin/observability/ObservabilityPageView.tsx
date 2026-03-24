@@ -1,18 +1,18 @@
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import type { ObservabilityPageData } from "@/app/admin/observability/types";
+import type { ObservabilityPageData } from "@/features/admin/observability/dashboard/model/dashboard.types";
 import CopyDiagnosticsLinkButton from "@/components/admin/observability/CopyDiagnosticsLinkButton";
 import RunMaintenanceButton from "@/components/admin/observability/RunMaintenanceButton";
-import ObservabilityAlertsSection from "@/components/admin/observability/ObservabilityAlertsSection";
-import ObservabilityCapacitySection from "@/components/admin/observability/ObservabilityCapacitySection";
-import ObservabilityKpiSection from "@/components/admin/observability/ObservabilityKpiSection";
-import ObservabilityMaintenanceRunsSection from "@/components/admin/observability/ObservabilityMaintenanceRunsSection";
+import ObservabilityAlertsSection from "@/features/admin/observability/alerts/components/ObservabilityAlertsSection";
+import ObservabilityCapacitySection from "@/features/admin/observability/capacity/components/ObservabilityCapacitySection";
+import ObservabilityKpiSection from "@/features/admin/observability/metrics/components/ObservabilityKpiSection";
+import ObservabilityMaintenanceRunsSection from "@/features/admin/observability/maintenance/components/ObservabilityMaintenanceRunsSection";
 
 interface Props {
   data: ObservabilityPageData;
 }
 
 export default function ObservabilityPageView({ data }: Props) {
-  const alertEvents = data.alertsCursorResult.items;
+  const { header, sections } = data;
 
   return (
     <div>
@@ -22,68 +22,40 @@ export default function ObservabilityPageView({ data }: Props) {
         actions={
           <>
             <CopyDiagnosticsLinkButton
-              preset={data.selectedPreset}
-              windowValue={data.selectedWindow}
-              severity={data.selectedSeverity}
-              source={data.selectedSource}
-              eventType={data.selectedEventType}
-              alertsCursor={data.alertsCursor}
-              alertsDir={data.alertsDir}
+              preset={header.selectedPreset}
+              windowValue={header.selectedWindow}
+              severity={header.selectedSeverity}
+              source={header.selectedSource}
+              eventType={header.selectedEventType}
+              alertsCursor={header.alertsCursor}
+              alertsDir={header.alertsDir}
               alertsPage={1}
-              runsPage={data.runsPage}
-              alertsPageSize={data.alertsPageSize}
-              runsPageSize={data.runsPageSize}
-              exportLimit={data.exportLimit}
+              runsPage={header.runsPage}
+              alertsPageSize={header.alertsPageSize}
+              runsPageSize={header.runsPageSize}
+              exportLimit={header.exportLimit}
             />
             <RunMaintenanceButton />
           </>
         }
       />
-      {data.shareExp ? (
+      {header.shareExp ? (
         <p
-          className={`mb-1.5 mt-0.5 text-xs ${data.signedLinkValid ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}
+          className={`mb-1.5 mt-0.5 text-xs ${header.signedLinkValid ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}
         >
-          {data.signedLinkValid
+          {header.signedLinkValid
             ? "Signed diagnostics link hợp lệ (chưa hết hạn)."
             : "Signed diagnostics link không hợp lệ hoặc đã hết hạn."}
         </p>
       ) : null}
 
-      <ObservabilityKpiSection
-        metrics={data.metrics}
-        pipelineQueued={data.pipelineQueued}
-        pipelineProcessing={data.pipelineProcessing}
-        pipelineFailed={data.pipelineFailed}
-      />
+      <ObservabilityKpiSection viewModel={sections.kpi} />
 
-      <ObservabilityAlertsSection
-        selectedPreset={data.selectedPreset}
-        selectedWindow={data.selectedWindow}
-        selectedSeverity={data.selectedSeverity}
-        selectedSource={data.selectedSource}
-        selectedEventType={data.selectedEventType}
-        alertsPageSize={data.alertsPageSize}
-        runsPageSize={data.runsPageSize}
-        exportLimit={data.exportLimit}
-        baseFilters={data.baseFilters}
-        alertsExportHref={data.alertsExportHref}
-        sourceOptions={data.sourceOptions}
-        eventTypeOptions={data.eventTypeOptions}
-        latestRunAlerts={data.latestRunAlerts}
-        alertEvents={alertEvents}
-        alertsCursorResult={data.alertsCursorResult}
-      />
+      <ObservabilityAlertsSection viewModel={sections.alerts} />
 
-      <ObservabilityCapacitySection capacityRows={data.capacityRows} />
+      <ObservabilityCapacitySection viewModel={sections.capacity} />
 
-      <ObservabilityMaintenanceRunsSection
-        runs={data.runs}
-        runsTotal={data.runsTotal}
-        runsTotalPages={data.runsTotalPages}
-        runsPage={data.runsPage}
-        runsExportHref={data.runsExportHref}
-        baseFilters={data.baseFilters}
-      />
+      <ObservabilityMaintenanceRunsSection viewModel={sections.runs} />
     </div>
   );
 }

@@ -19,7 +19,7 @@ export default async function AdminCategoriesPage() {
     <div>
       <AdminPageHeader
         title="Danh mục"
-        description="Môn học, Khối lớp, Kỳ thi — dùng cho dropdown đăng tài liệu và bộ lọc"
+        description="Quản lý theo từng phần Môn học, Khối lớp, Kỳ thi — dùng cho dropdown đăng tài liệu và bộ lọc"
       />
       <AdminCategoriesClient initialCategories={categories ?? []} />
     </div>

@@ -16,10 +16,15 @@ export type SecureAccessProfile = {
   role: string;
   admin_role: string | null;
   is_active?: boolean | null;
+  banned_until?: string | null;
 };
 
 export function isProfileActive(profile: SecureAccessProfile | null): boolean {
-  return !!(profile && profile.is_active !== false);
+  if (!profile || profile.is_active === false) return false;
+  if (!profile.banned_until) return true;
+  const untilMs = Date.parse(profile.banned_until);
+  if (!Number.isFinite(untilMs)) return true;
+  return untilMs <= Date.now();
 }
 
 export function computeIsSuperAdmin(profile: SecureAccessProfile | null): boolean {

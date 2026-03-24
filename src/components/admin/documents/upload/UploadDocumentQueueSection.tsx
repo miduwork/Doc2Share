@@ -53,7 +53,7 @@ export function UploadDocumentQueueSection({
             type="button"
             disabled={processingQueue || queue.every((q) => q.status !== "pending")}
             onClick={onProcessAll}
-            className="flex items-center gap-2 rounded-xl bg-primary py-2 px-4 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+            className="admin-btn-md gap-2 bg-primary text-white hover:bg-primary-700 disabled:opacity-50"
           >
             {processingQueue ? (
               <>

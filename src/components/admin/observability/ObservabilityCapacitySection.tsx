@@ -1,11 +1,12 @@
-import type { CapacityRow } from "@/app/admin/observability/types";
-import { formatBytes, formatCount, formatTime } from "@/app/admin/observability/utils";
+import type { CapacitySectionViewModel } from "@/features/admin/observability/dashboard/model/dashboard.types";
+import { formatBytes, formatCount, formatTime } from "@/features/admin/observability/shared/formatters";
 
 interface Props {
-  capacityRows: CapacityRow[];
+  viewModel: CapacitySectionViewModel;
 }
 
-export default function ObservabilityCapacitySection({ capacityRows }: Props) {
+export default function ObservabilityCapacitySection({ viewModel }: Props) {
+  const { capacityRows } = viewModel;
   return (
     <section className="mt-5 reveal-section">
       <h2 className="text-sm font-semibold text-semantic-heading">Backend Capacity</h2>

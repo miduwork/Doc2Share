@@ -16,6 +16,27 @@ import {
 test("isProfileActive false for null or inactive", () => {
   assert.equal(isProfileActive(null), false);
   assert.equal(isProfileActive({ role: "student", admin_role: null, is_active: false }), false);
+  assert.equal(
+    isProfileActive({
+      role: "student",
+      admin_role: null,
+      is_active: true,
+      banned_until: new Date(Date.now() + 60_000).toISOString(),
+    }),
+    false
+  );
+});
+
+test("isProfileActive true when ban already expired", () => {
+  assert.equal(
+    isProfileActive({
+      role: "student",
+      admin_role: null,
+      is_active: true,
+      banned_until: new Date(Date.now() - 60_000).toISOString(),
+    }),
+    true
+  );
 });
 
 test("computeIsSuperAdmin", () => {
@@ -45,6 +66,11 @@ test("evaluateDeviceGate allows known device", () => {
   assert.equal(r.ok, true);
 });
 
+test("evaluateDeviceGate allows second new device when below limit", () => {
+  const r = evaluateDeviceGate(["a"], "b", false, 2);
+  assert.equal(r.ok, true);
+});
+
 test("evaluateSessionDevice no_active_session", () => {
   const r = evaluateSessionDevice(null, "dev1", false);
   assert.equal(r.ok, false);
@@ -59,6 +85,7 @@ test("evaluateSessionDevice device_mismatch", () => {
 
 test("evaluateSessionDevice super_admin skips", () => {
   assert.equal(evaluateSessionDevice(null, "x", true).ok, true);
+  assert.equal(evaluateSessionDevice("device_a", "device_b", true).ok, true);
 });
 
 test("evaluateDocumentPermission admin bypass", () => {

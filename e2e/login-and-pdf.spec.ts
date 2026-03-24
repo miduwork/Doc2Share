@@ -10,27 +10,27 @@ const PASSWORD = process.env.E2E_LOGIN_PASSWORD ?? "";
 const SKIP_LOGIN = !EMAIL || !PASSWORD;
 
 test.describe("Login + PDF reader", () => {
-  test("login redirects to dashboard", async ({ page }) => {
+  test("login redirects to tu-sach", async ({ page }) => {
     test.skip(SKIP_LOGIN, "Thiếu E2E_LOGIN_EMAIL hoặc E2E_LOGIN_PASSWORD");
     await page.goto("/login");
     await page.getByLabel(/email/i).fill(EMAIL);
     await page.getByLabel(/mật khẩu|password/i).fill(PASSWORD);
     await page.getByRole("button", { name: /đăng nhập|login|submit/i }).click();
-    await expect(page).toHaveURL(/\/(dashboard|login)/);
-    if (page.url().includes("/dashboard")) {
+    await expect(page).toHaveURL(/\/(tu-sach|login)/);
+    if (page.url().includes("/tu-sach")) {
       await expect(page.getByRole("main")).toBeVisible();
     }
   });
 
-  test("login then open PDF reader from dashboard", async ({ page }) => {
+  test("login then open PDF reader from tu-sach", async ({ page }) => {
     test.skip(SKIP_LOGIN, "Thiếu E2E_LOGIN_EMAIL hoặc E2E_LOGIN_PASSWORD");
     await page.goto("/login");
     await page.getByLabel(/email/i).fill(EMAIL);
     await page.getByLabel(/mật khẩu|password/i).fill(PASSWORD);
     await page.getByRole("button", { name: /đăng nhập|login|submit/i }).click();
-    await expect(page).toHaveURL(/\/(dashboard|login)/, { timeout: 15000 });
-    if (!page.url().includes("/dashboard")) {
-      test.skip(true, "Login không thành công hoặc không redirect về dashboard");
+    await expect(page).toHaveURL(/\/(tu-sach|login)/, { timeout: 15000 });
+    if (!page.url().includes("/tu-sach")) {
+      test.skip(true, "Login không thành công hoặc không redirect về tu-sach");
     }
     const readLink = page.getByRole("link", { name: /đọc/i }).first();
     const count = await readLink.count();

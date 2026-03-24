@@ -1,5 +1,5 @@
 import Link from "next/link";
-import PublicLayout from "@/components/layout/PublicLayout";
+import PublicLayout from "@/features/layout/components/PublicLayout";
 
 export const metadata = {
   title: "Liên hệ / FAQ | Doc2Share",

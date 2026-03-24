@@ -134,7 +134,7 @@ export default function AdminUsersClient({
         </div>
         <p className="mt-2 text-[11px] text-muted">
           <strong>Lấy User ID:</strong> Bấm mũi tên ▼ bên cạnh user trong bảng để mở rồi bấm &quot;Dùng User ID này&quot;, hoặc vào chi tiết user (link tên) để xem ID. —
-          <strong> Lấy Document ID:</strong> Từ URL trang tài liệu <span className="font-mono">/tai-lieu/[id]/...</span> (phần <span className="font-mono">[id]</span>), hoặc <Link href="/admin/documents" className="text-primary hover:underline">Admin → Tài liệu</Link> (cột ID).
+          <strong> Lấy Document ID:</strong> Từ URL cửa hàng <span className="font-mono">/cua-hang/[id]/...</span> (phần <span className="font-mono">[id]</span>), hoặc <Link href="/admin/documents" className="text-primary hover:underline">Admin → Tài liệu</Link> (cột ID).
         </p>
       </div>
 

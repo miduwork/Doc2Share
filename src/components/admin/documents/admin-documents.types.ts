@@ -25,6 +25,18 @@ export interface JobRow {
   updated_at: string;
 }
 
+export interface BulkHistoryRow {
+  id: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  operation: string;
+  target_table: string;
+  document_ids: string[];
+  affected_count: number;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
 export interface FiltersState {
   q: string;
   status: string;

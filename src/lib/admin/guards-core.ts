@@ -22,7 +22,15 @@ export type AdminContextProfile = {
   role: string;
   admin_role: string | null;
   is_active: boolean;
+  banned_until?: string | null;
 } | null;
+
+function isNotBannedNow(bannedUntil: string | null | undefined): boolean {
+  if (!bannedUntil) return true;
+  const untilMs = Date.parse(bannedUntil);
+  if (!Number.isFinite(untilMs)) return true;
+  return untilMs <= Date.now();
+}
 
 /** Capability map: add new admin roles here and extend AdminRole in lib/types.ts. */
 export const ADMIN_ROLE_CAPABILITIES: Record<
@@ -52,7 +60,7 @@ export function computeAdminContext(
   profile: AdminContextProfile
 ): GuardResult {
   if (!user) return { ok: false, error: "Bạn chưa đăng nhập." };
-  if (!profile || profile.role !== "admin" || !profile.is_active) {
+  if (!profile || profile.role !== "admin" || !profile.is_active || !isNotBannedNow(profile.banned_until)) {
     return { ok: false, error: "Bạn không có quyền thực hiện thao tác này." };
   }
   return {

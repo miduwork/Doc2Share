@@ -1,6 +1,6 @@
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import DocumentCardSkeleton from "@/components/DocumentCardSkeleton";
+import Header from "@/features/layout/components/Header";
+import Footer from "@/features/layout/components/Footer";
+import DocumentCardSkeleton from "@/features/documents/list/components/DocumentCardSkeleton";
 
 /**
  * Skeleton khi loading route gốc (trang chủ /).

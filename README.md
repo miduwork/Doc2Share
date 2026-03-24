@@ -65,7 +65,7 @@ Mở [http://localhost:3000](http://localhost:3000).
 - **DB**: `categories`, `documents`, `profiles`, `permissions`, `device_logs`, `active_sessions`, `usage_stats`, `access_logs`, `security_logs`, `orders`, `order_items`. RLS và triggers (tạo profile khi đăng ký, cảnh báo >2 thiết bị, tự khóa user khi 3 red flags/1h).
 - **Đọc tài liệu (bảo mật)**: Ứng dụng web (Secure Reader) gọi **`POST /api/secure-pdf`** — stream PDF, cookie session, rate limit và audit (`access_logs`, action `secure_pdf`). **`POST /api/secure-link`** trả signed URL ngắn hạn (cùng quy tắc nghiệp vụ trong `src/lib/secure-access/secure-access-core.ts`). **Edge `get-secure-link`**: client gửi **Bearer JWT** (app mobile / tích hợp ngoài), cùng logic cốt lõi sau khi sync từ core; ghi `access_logs` với action `get_secure_link`, có thể tạo `active_sessions` nếu thiếu. Chi tiết: [ARCHITECTURE.md](./ARCHITECTURE.md) mục “Luồng truy cập tài liệu”.
 - **payment-webhook**: Xác thực SePay API key header, match order, idempotent; transaction cập nhật `orders` + insert `permissions`.
-- **Frontend**: Trang chủ + lọc (khối lớp, môn, kỳ thi), SEO URL `/tai-lieu/[id]/[slug]`, Schema.org CreativeWork, preview 3–5 trang, Secure Reader (chặn right-click/Ctrl+C/P/S/F12, watermark, blur khi chuột ra ngoài), Dashboard (Tủ sách, Quản lý thiết bị), Admin (Overview, Document CMS, Security, Users, Webhooks).
+- **Frontend**: Trang chủ + lọc (khối lớp, môn, kỳ thi), SEO URL `/cua-hang/[id]/[slug]`, Schema.org CreativeWork, preview 3–5 trang, Secure Reader (chặn right-click/Ctrl+C/P/S/F12, watermark, blur khi chuột ra ngoài), Dashboard (Tủ sách, Quản lý thiết bị), Admin (Overview, Document CMS, Security, Users, Webhooks).
 
 ## SePay webhook
 

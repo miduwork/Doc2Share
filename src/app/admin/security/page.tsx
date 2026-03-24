@@ -1,36 +1,34 @@
-import { createClient } from "@/lib/supabase/server";
 import AdminSecurityClient from "@/components/admin/AdminSecurityClient";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import { redirect } from "next/navigation";
 import { requireSuperAdminContext } from "@/lib/admin/guards";
+import { getSecurityWorkspaceData } from "@/lib/admin/security-workspace.service";
+import type { SearchParamsLike } from "@/lib/admin/security-log-query";
+import { parseSecurityWorkspace, SECURITY_WORKSPACES } from "@/lib/admin/security-workspace";
+import Link from "next/link";
 
-export default async function AdminSecurityPage() {
+function getWorkspaceParam(params: SearchParamsLike | undefined): string | undefined {
+  const raw = params?.workspace;
+  if (Array.isArray(raw)) return raw[0];
+  return raw;
+}
+
+export default async function AdminSecurityPage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParamsLike>;
+}) {
   const guard = await requireSuperAdminContext();
   if (!guard.ok) redirect("/admin");
-
-  const supabase = await createClient();
-  const { data: securityLogs } = await supabase
-    .from("security_logs")
-    .select("id, user_id, event_type, severity, ip_address, user_agent, device_id, created_at")
-    .order("created_at", { ascending: false })
-    .limit(100);
-  const { data: accessLogs } = await supabase
-    .from("access_logs")
-    .select("id, user_id, document_id, action, status, ip_address, device_id, created_at")
-    .eq("action", "get_secure_link")
-    .order("created_at", { ascending: false })
-    .limit(100);
-  const { data: activeSessions } = await supabase
-    .from("active_sessions")
-    .select("session_id, user_id, ip_address, user_agent, device_id, created_at")
-    .order("created_at", { ascending: false });
-  const { data: deviceCounts } = await supabase.from("device_logs").select("user_id");
-  const countByUser: Record<string, number> = {};
-  for (const d of deviceCounts ?? []) {
-    const uid = (d as { user_id: string }).user_id;
-    countByUser[uid] = (countByUser[uid] ?? 0) + 1;
-  }
-  const highRiskUserIds = Object.entries(countByUser).filter(([, c]) => c > 2).map(([u]) => u);
+  const params = await searchParams;
+  const workspace = parseSecurityWorkspace(getWorkspaceParam(params));
+  const dashboard = await getSecurityWorkspaceData({ searchParams: params, workspace });
+  const tabLabel: Record<(typeof SECURITY_WORKSPACES)[number], string> = {
+    overview: "Tổng quan",
+    logs: "Nhật ký",
+    geo: "Địa lý IP",
+    benchmark: "Benchmark",
+  };
 
   return (
     <div>
@@ -38,12 +36,36 @@ export default async function AdminSecurityPage() {
         title="An ninh"
         description="Bảo vệ bản quyền — nhật ký truy cập, phiên đăng nhập, thiết bị"
       />
+      <div className="mt-4 flex flex-wrap gap-2">
+        {SECURITY_WORKSPACES.map((tab) => (
+          <Link
+            key={tab}
+            href={`/admin/security?workspace=${tab}`}
+            className={`rounded px-3 py-1 text-xs ${
+              workspace === tab
+                ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900"
+                : "border border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300"
+            }`}
+          >
+            {tabLabel[tab]}
+          </Link>
+        ))}
+      </div>
       <AdminSecurityClient
-          logs={securityLogs ?? []}
-          highRiskUserIds={highRiskUserIds}
-          accessLogs={accessLogs ?? []}
-          activeSessions={activeSessions ?? []}
-        />
+        workspace={workspace}
+        filters={dashboard.filters}
+        logs={dashboard.logs}
+        highRiskUsers={dashboard.highRiskUsers}
+        accessLogs={dashboard.accessLogs}
+        activeSessions={dashboard.activeSessions}
+        geoPoints={dashboard.geoPoints}
+        weeklyStats={dashboard.weeklyStats}
+        incidents={dashboard.incidents}
+        accessPagination={dashboard.accessPagination}
+        securityPagination={dashboard.securityPagination}
+        exportUrls={dashboard.exportUrls}
+        benchmark={dashboard.benchmark}
+      />
     </div>
   );
 }

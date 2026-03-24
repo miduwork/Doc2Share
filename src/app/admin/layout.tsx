@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserWithProfile } from "@/lib/auth/current-user-context";
 import AdminNav from "@/components/admin/AdminNav";
 import AdminBreadcrumb from "@/components/admin/AdminBreadcrumb";
 import Link from "next/link";
@@ -7,16 +7,11 @@ import Link from "next/link";
 export default async function AdminLayout({
   children,
 }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, profile } = await getCurrentUserWithProfile();
   if (!user) redirect("/login?redirect=/admin");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, admin_role, is_active")
-    .eq("id", user.id)
-    .single();
-  if (profile?.role !== "admin" || !profile?.is_active) redirect("/dashboard");
+  const isBanned = Boolean(profile?.banned_until && new Date(profile.banned_until) > new Date());
+  if (profile?.role !== "admin" || !profile?.is_active || isBanned) redirect("/tu-sach");
 
   return (
     <div className="app-shell flex min-h-screen">

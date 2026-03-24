@@ -13,11 +13,84 @@ interface Props {
   exams: Category[];
 }
 
+type UploadDocumentFileFieldsProps = Pick<Props, "register" | "errors">;
+
+export function UploadDocumentFileFields({ register, errors }: UploadDocumentFileFieldsProps) {
+  return (
+    <fieldset className="space-y-2.5 border-t border-line pt-5 lg:border-0 lg:pt-0" aria-describedby="upload-files-desc">
+      <legend className="sr-only">Tệp đính kèm</legend>
+      <div className="grid gap-2.5 lg:grid-cols-3">
+      <div className="rounded-xl border border-line bg-surface p-3">
+        <label htmlFor="upload-mainFile" className="flex items-center gap-1.5 text-sm font-semibold text-semantic-heading">
+          <FileText className="h-4 w-4" aria-hidden />
+          Tài liệu chính (PDF) *
+        </label>
+        <input
+          id="upload-mainFile"
+          type="file"
+          accept=".pdf,application/pdf"
+          {...register("mainFile")}
+          className="mt-1.5 block w-full text-sm text-muted file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white file:transition"
+          aria-invalid={Boolean(errors.mainFile)}
+          aria-describedby={errors.mainFile ? "upload-mainFile-error" : undefined}
+        />
+        {errors.mainFile && (
+          <p id="upload-mainFile-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
+            {errors.mainFile.message}
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-line bg-surface p-3">
+        <label htmlFor="upload-coverFile" className="flex items-center gap-1.5 text-sm font-semibold text-semantic-heading">
+          <ImageIcon className="h-4 w-4" aria-hidden />
+          Ảnh bìa / Thumbnail (JPG hoặc PNG) *
+        </label>
+        <input
+          id="upload-coverFile"
+          type="file"
+          accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+          {...register("coverFile")}
+          className="mt-1.5 block w-full text-sm text-muted file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white file:transition"
+          aria-invalid={Boolean(errors.coverFile)}
+          aria-describedby={errors.coverFile ? "upload-coverFile-error" : undefined}
+        />
+        {errors.coverFile && (
+          <p id="upload-coverFile-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
+            {errors.coverFile.message}
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-line bg-surface p-3">
+        <label htmlFor="upload-previewFile" className="flex items-center gap-1.5 text-sm font-semibold text-semantic-heading">
+          <FileStack className="h-4 w-4" aria-hidden />
+          Bản xem thử (PDF, 3–5 trang) — tùy chọn
+        </label>
+        <input
+          id="upload-previewFile"
+          type="file"
+          accept=".pdf,application/pdf"
+          {...register("previewFile")}
+          className="mt-1.5 block w-full text-sm text-muted file:mr-3 file:rounded-md file:border-0 file:bg-surface-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-fg file:transition"
+          aria-describedby={errors.previewFile ? "upload-previewFile-error" : undefined}
+        />
+        {errors.previewFile && (
+          <p id="upload-previewFile-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
+            {errors.previewFile.message}
+          </p>
+        )}
+      </div>
+      </div>
+    </fieldset>
+  );
+}
+
 export function UploadDocumentFormFields({ register, errors, subjects, grades, exams }: Props) {
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="sm:col-span-2">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-12">
+        <div className="sm:col-span-2 lg:col-span-6">
           <label htmlFor="upload-title" className="block text-sm font-medium text-semantic-heading">
             Tiêu đề *
           </label>
@@ -36,26 +109,7 @@ export function UploadDocumentFormFields({ register, errors, subjects, grades, e
           )}
         </div>
 
-        <div className="sm:col-span-2">
-          <label htmlFor="upload-description" className="block text-sm font-medium text-semantic-heading">
-            Mô tả
-          </label>
-          <textarea
-            id="upload-description"
-            {...register("description")}
-            rows={3}
-            className="input-premium mt-1"
-            placeholder="Mô tả ngắn về tài liệu"
-            aria-describedby={errors.description ? "upload-description-error" : undefined}
-          />
-          {errors.description && (
-            <p id="upload-description-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
-              {errors.description.message}
-            </p>
-          )}
-        </div>
-
-        <div>
+        <div className="lg:col-span-3">
           <label htmlFor="upload-price" className="block text-sm font-medium text-semantic-heading">
             Giá (₫) *
           </label>
@@ -76,7 +130,7 @@ export function UploadDocumentFormFields({ register, errors, subjects, grades, e
           )}
         </div>
 
-        <div className="flex items-center gap-2 pt-8">
+        <div className="flex items-center gap-2 pt-2 lg:col-span-3 lg:self-end lg:pb-2">
           <input
             id="upload-downloadable"
             type="checkbox"
@@ -89,140 +143,93 @@ export function UploadDocumentFormFields({ register, errors, subjects, grades, e
           </label>
         </div>
 
-        <div>
-          <label htmlFor="upload-subject" className="block text-sm font-medium text-semantic-heading">
-            Môn học
+        <div className="sm:col-span-2 lg:col-span-12">
+          <label htmlFor="upload-description" className="block text-sm font-medium text-semantic-heading">
+            Mô tả
           </label>
-          <select
-            id="upload-subject"
-            {...register("subject_id")}
-            className="input-premium mt-1 min-h-[2.25rem] cursor-pointer"
-            aria-describedby="upload-subject-desc"
-          >
-            <option value="">— Chọn —</option>
-            {subjects.map((s) => (
-              <option key={s.id} value={String(s.id)}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <p id="upload-subject-desc" className="sr-only">
-            Chọn một môn học cho tài liệu
-          </p>
+          <textarea
+            id="upload-description"
+            {...register("description")}
+            rows={3}
+            className="input-premium mt-1"
+            placeholder="Mô tả ngắn về tài liệu"
+            aria-describedby={errors.description ? "upload-description-error" : undefined}
+          />
+          {errors.description && (
+            <p id="upload-description-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
+              {errors.description.message}
+            </p>
+          )}
         </div>
 
-        <div>
-          <label htmlFor="upload-grade" className="block text-sm font-medium text-semantic-heading">
-            Khối lớp
-          </label>
-          <select
-            id="upload-grade"
-            {...register("grade_id")}
-            className="input-premium mt-1 min-h-[2.25rem] cursor-pointer"
-            aria-describedby="upload-grade-desc"
-          >
-            <option value="">— Chọn —</option>
-            {grades.map((g) => (
-              <option key={g.id} value={String(g.id)}>
-                {g.name}
-              </option>
-            ))}
-          </select>
-          <p id="upload-grade-desc" className="sr-only">
-            Chọn khối lớp
-          </p>
-        </div>
+        <div className="sm:col-span-2 lg:col-span-12 grid gap-3 lg:grid-cols-3">
+          <div>
+            <label htmlFor="upload-subject" className="block text-sm font-medium text-semantic-heading">
+              Môn học
+            </label>
+            <select
+              id="upload-subject"
+              {...register("subject_id")}
+              className="input-premium mt-1 min-h-[2.25rem] cursor-pointer"
+              aria-describedby="upload-subject-desc"
+            >
+              <option value="">— Chọn —</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={String(s.id)}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <p id="upload-subject-desc" className="sr-only">
+              Chọn một môn học cho tài liệu
+            </p>
+          </div>
 
-        <div>
-          <label htmlFor="upload-exam" className="block text-sm font-medium text-semantic-heading">
-            Kỳ thi
-          </label>
-          <select
-            id="upload-exam"
-            {...register("exam_id")}
-            className="input-premium mt-1 min-h-[2.25rem] cursor-pointer"
-            aria-describedby="upload-exam-desc"
-          >
-            <option value="">— Chọn —</option>
-            {exams.map((e) => (
-              <option key={e.id} value={String(e.id)}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-          <p id="upload-exam-desc" className="sr-only">
-            Chọn kỳ thi (tùy chọn)
-          </p>
+          <div>
+            <label htmlFor="upload-grade" className="block text-sm font-medium text-semantic-heading">
+              Khối lớp
+            </label>
+            <select
+              id="upload-grade"
+              {...register("grade_id")}
+              className="input-premium mt-1 min-h-[2.25rem] cursor-pointer"
+              aria-describedby="upload-grade-desc"
+            >
+              <option value="">— Chọn —</option>
+              {grades.map((g) => (
+                <option key={g.id} value={String(g.id)}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+            <p id="upload-grade-desc" className="sr-only">
+              Chọn khối lớp
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="upload-exam" className="block text-sm font-medium text-semantic-heading">
+              Kỳ thi
+            </label>
+            <select
+              id="upload-exam"
+              {...register("exam_id")}
+              className="input-premium mt-1 min-h-[2.25rem] cursor-pointer"
+              aria-describedby="upload-exam-desc"
+            >
+              <option value="">— Chọn —</option>
+              {exams.map((e) => (
+                <option key={e.id} value={String(e.id)}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
+            <p id="upload-exam-desc" className="sr-only">
+              Chọn kỳ thi (tùy chọn)
+            </p>
+          </div>
         </div>
       </div>
-
-      <fieldset className="space-y-4 border-t border-line pt-6" aria-describedby="upload-files-desc">
-        <legend className="sr-only">Tệp đính kèm</legend>
-        <p id="upload-files-desc" className="text-sm text-muted">
-          Tài liệu chính (PDF), ảnh bìa (JPG/PNG) bắt buộc; bản xem thử (PDF) tùy chọn.
-        </p>
-        <div>
-          <label htmlFor="upload-mainFile" className="flex items-center gap-2 text-sm font-medium text-semantic-heading">
-            <FileText className="h-4 w-4" aria-hidden />
-            Tài liệu chính (PDF) *
-          </label>
-          <input
-            id="upload-mainFile"
-            type="file"
-            accept=".pdf,application/pdf"
-            {...register("mainFile")}
-            className="mt-1 block w-full text-sm text-muted file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:text-white file:transition"
-            aria-invalid={Boolean(errors.mainFile)}
-            aria-describedby={errors.mainFile ? "upload-mainFile-error" : undefined}
-          />
-          {errors.mainFile && (
-            <p id="upload-mainFile-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
-              {errors.mainFile.message}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="upload-coverFile" className="flex items-center gap-2 text-sm font-medium text-semantic-heading">
-            <ImageIcon className="h-4 w-4" aria-hidden />
-            Ảnh bìa / Thumbnail (JPG hoặc PNG) *
-          </label>
-          <input
-            id="upload-coverFile"
-            type="file"
-            accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-            {...register("coverFile")}
-            className="mt-1 block w-full text-sm text-muted file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:text-white file:transition"
-            aria-invalid={Boolean(errors.coverFile)}
-            aria-describedby={errors.coverFile ? "upload-coverFile-error" : undefined}
-          />
-          {errors.coverFile && (
-            <p id="upload-coverFile-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
-              {errors.coverFile.message}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="upload-previewFile" className="flex items-center gap-2 text-sm font-medium text-semantic-heading">
-            <FileStack className="h-4 w-4" aria-hidden />
-            Bản xem thử (PDF, 3–5 trang) — tùy chọn
-          </label>
-          <input
-            id="upload-previewFile"
-            type="file"
-            accept=".pdf,application/pdf"
-            {...register("previewFile")}
-            className="mt-1 block w-full text-sm text-muted file:mr-4 file:rounded-lg file:border-0 file:bg-surface-muted file:px-4 file:py-2 file:text-fg file:transition"
-            aria-describedby={errors.previewFile ? "upload-previewFile-error" : undefined}
-          />
-          {errors.previewFile && (
-            <p id="upload-previewFile-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
-              {errors.previewFile.message}
-            </p>
-          )}
-        </div>
-      </fieldset>
     </>
   );
 }

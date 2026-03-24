@@ -21,7 +21,7 @@ export default function KpiCard({ icon, label, value, sub, tooltip }: Props) {
           </span>
         ) : null}
       </div>
-      <p className="text-lg font-bold text-slate-900 dark:text-white">{value}</p>
+      <p className="text-lg font-bold text-semantic-heading">{value}</p>
       <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{sub}</p>
     </article>
   );

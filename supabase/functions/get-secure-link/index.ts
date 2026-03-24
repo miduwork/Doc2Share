@@ -64,11 +64,11 @@ serve(async (req) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("is_active, role, admin_role")
+      .select("is_active, role, admin_role, banned_until")
       .eq("id", user.id)
       .maybeSingle();
     if (!isProfileActive(profile)) {
-      await insertSecurityLog(supabase, user.id, "file_access", "high", req, undefined, { reason: "inactive_profile" });
+      await insertSecurityLog(supabase, user.id, "file_access", "high", req, undefined, { reason: "inactive_profile" }, requestId);
       await logObservability(supabase, {
         requestId,
         source: "edge.get_secure_link",
@@ -118,7 +118,16 @@ serve(async (req) => {
 
     if (!activeSession) {
       await logAccess(supabase, user.id, document_id, "get_secure_link", "blocked", req, device_id, "no_active_session", requestId, Date.now() - startedAt);
-      await insertSecurityLog(supabase, user.id, "file_access", "medium", req, device_id, { reason: "no_active_session" });
+      await insertSecurityLog(
+        supabase,
+        user.id,
+        "file_access",
+        "medium",
+        req,
+        device_id,
+        { reason: "no_active_session" },
+        requestId
+      );
       await logObservability(supabase, {
         requestId, source: "edge.get_secure_link", eventType: "blocked", severity: "warn",
         statusCode: 401, latencyMs: Date.now() - startedAt, userId: user.id, documentId: document_id, deviceId: device_id,
@@ -195,7 +204,16 @@ serve(async (req) => {
           .eq("status", "blocked")
           .gte("created_at", tenMinAgo);
         const severity = (bruteCount != null && bruteCount >= bruteBlocked10Min()) ? "high" : "medium";
-        await insertSecurityLog(supabase, user.id, "file_access", severity, req, device_id, { reason: "permissions_bypass", document_id });
+        await insertSecurityLog(
+          supabase,
+          user.id,
+          "file_access",
+          severity,
+          req,
+          device_id,
+          { reason: "permissions_bypass", document_id },
+          requestId
+        );
         await logObservability(supabase, {
           requestId, source: "edge.get_secure_link", eventType: "blocked", severity: "warn",
           statusCode: 403, latencyMs: Date.now() - startedAt, userId: user.id, documentId: document_id, deviceId: device_id,
@@ -217,7 +235,7 @@ serve(async (req) => {
       .gte("created_at", oneHourAgo);
     if (wouldExceedHourlySuccessLimit(countHour ?? 0, rateLimitViewsPerHour())) {
       await logAccess(supabase, user.id, document_id, "get_secure_link", "blocked", req, device_id, "rate_limit", requestId, Date.now() - startedAt);
-      await insertSecurityLog(supabase, user.id, "file_access", "medium", req, device_id, { reason: "rate_limit" });
+      await insertSecurityLog(supabase, user.id, "file_access", "medium", req, device_id, { reason: "rate_limit" }, requestId);
       return jsonResponse({ error: "Thao tác quá nhanh, vui lòng thử lại sau.", request_id: requestId }, 429, requestId);
     }
 
@@ -232,7 +250,16 @@ serve(async (req) => {
     const recentIds = (recentSuccess ?? []).map((r: { document_id: string | null }) => r.document_id);
     if (wouldExceedHighFreqDistinctDocs(recentIds, document_id, highFreqDocs10Min())) {
       await logAccess(supabase, user.id, document_id, "get_secure_link", "blocked", req, device_id, "high_frequency", requestId, Date.now() - startedAt);
-      await insertSecurityLog(supabase, user.id, "file_access", "medium", req, device_id, { reason: "high_frequency" });
+      await insertSecurityLog(
+        supabase,
+        user.id,
+        "file_access",
+        "medium",
+        req,
+        device_id,
+        { reason: "high_frequency" },
+        requestId
+      );
       return jsonResponse({ error: "Thao tác quá nhanh, vui lòng thử lại sau.", request_id: requestId }, 429, requestId);
     }
 
@@ -323,7 +350,12 @@ async function logAccess(
     status,
     ip_address: ipFromReq(req),
     device_id: deviceId ?? null,
-    metadata: { ...(reason ? { reason } : {}), ...(requestId ? { request_id: requestId } : {}), ...(latencyMs != null ? { latency_ms: latencyMs } : {}) },
+    correlation_id: requestId ?? null,
+    metadata: {
+      ...(reason ? { reason } : {}),
+      ...(requestId ? { request_id: requestId, correlation_id: requestId } : {}),
+      ...(latencyMs != null ? { latency_ms: latencyMs } : {}),
+    },
   });
 }
 
@@ -334,7 +366,8 @@ async function insertSecurityLog(
   severity: "low" | "medium" | "high",
   req: Request,
   deviceId?: string,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
+  correlationId?: string
 ) {
   await supabase.from("security_logs").insert({
     user_id: userId,
@@ -343,7 +376,11 @@ async function insertSecurityLog(
     ip_address: ipFromReq(req),
     user_agent: req.headers.get("user-agent") ?? null,
     device_id: deviceId ?? null,
-    metadata: metadata ?? {},
+    correlation_id: correlationId ?? null,
+    metadata: {
+      ...(metadata ?? {}),
+      ...(correlationId ? { correlation_id: correlationId } : {}),
+    },
   });
 }
 

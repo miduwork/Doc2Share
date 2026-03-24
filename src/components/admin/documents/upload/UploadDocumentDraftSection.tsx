@@ -27,7 +27,7 @@ export function UploadDocumentDraftSection({
           <button
             type="button"
             onClick={onClearDraft}
-            className="rounded-lg border border-line bg-surface px-3 py-1 text-sm font-medium text-fg hover:bg-muted"
+            className="admin-btn-sm border border-line bg-surface text-fg hover:bg-muted"
           >
             Hủy
           </button>
@@ -52,7 +52,7 @@ export function UploadDocumentDraftSection({
                   type="button"
                   onClick={() => onSelectDraft(d)}
                   disabled={!!draftSessionId}
-                  className="shrink-0 rounded-lg bg-primary px-2 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+                  className="admin-btn-sm shrink-0 bg-primary text-white hover:bg-primary-700 disabled:opacity-50"
                 >
                   Chọn
                 </button>

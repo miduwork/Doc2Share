@@ -1,0 +1,38 @@
+/* ========== Admin Console ========== */
+.admin-heading {
+  font-family: var(--font-display), "Plus Jakarta Sans", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.admin-breadcrumb-link:hover {
+  color: var(--primary-600);
+}
+
+html.dark .admin-breadcrumb-link:hover {
+  color: var(--primary-400);
+}
+
+.admin-sidebar {
+  --admin-sidebar-bg: rgba(248, 250, 252, 0.95);
+  --admin-sidebar-border: var(--border);
+}
+
+html.dark .admin-sidebar {
+  --admin-sidebar-bg: rgba(2, 6, 23, 0.95);
+  --admin-sidebar-border: rgba(42, 58, 90, 0.8);
+}
+
+.admin-brand:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.admin-nav-active {
+  border-left: 2px solid var(--primary-500);
+  margin-left: -1px;
+  padding-left: calc(0.625rem + 1px);
+}
+
+html.dark .admin-nav-active {
+  border-left-color: var(--primary-400);
+}

@@ -12,6 +12,7 @@ export type AccessLogParams = {
   deviceId?: string | null;
   reason?: string;
   requestId?: string;
+  correlationId?: string;
   latencyMs?: number;
 };
 
@@ -29,9 +30,13 @@ export async function logSecurePdfAccess(params: AccessLogParams): Promise<void>
       status: params.status,
       ip_address: params.ipAddress,
       device_id: params.deviceId ?? null,
+      correlation_id: params.correlationId ?? params.requestId ?? null,
       metadata: {
         ...(params.reason ? { reason: params.reason } : {}),
         ...(params.requestId ? { request_id: params.requestId } : {}),
+        ...((params.correlationId ?? params.requestId)
+          ? { correlation_id: params.correlationId ?? params.requestId }
+          : {}),
         ...(params.latencyMs != null ? { latency_ms: params.latencyMs } : {}),
       },
     });
@@ -48,6 +53,7 @@ export async function logLoginAttempt(params: {
   userId: string | null;
   status: "success" | "blocked";
   ipAddress: string | null;
+  correlationId?: string;
 }): Promise<void> {
   try {
     const service = createServiceRoleClient();
@@ -58,7 +64,8 @@ export async function logLoginAttempt(params: {
       status: params.status,
       ip_address: params.ipAddress,
       device_id: null,
-      metadata: {},
+      correlation_id: params.correlationId ?? null,
+      metadata: params.correlationId ? { correlation_id: params.correlationId } : {},
     });
   } catch (e) {
     console.error("access-log: login insert failed", e);

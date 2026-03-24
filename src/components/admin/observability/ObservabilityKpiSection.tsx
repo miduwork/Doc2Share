@@ -1,15 +1,13 @@
 import { Activity, AlertTriangle, Database, Wrench } from "lucide-react";
 import KpiCard from "@/components/admin/KpiCard";
-import type { MetricRow } from "@/app/admin/observability/types";
+import type { KpiSectionViewModel } from "@/features/admin/observability/dashboard/model/dashboard.types";
 
 interface Props {
-  metrics: MetricRow | null;
-  pipelineQueued: number;
-  pipelineProcessing: number;
-  pipelineFailed: number;
+  viewModel: KpiSectionViewModel;
 }
 
-export default function ObservabilityKpiSection({ metrics, pipelineQueued, pipelineProcessing, pipelineFailed }: Props) {
+export default function ObservabilityKpiSection({ viewModel }: Props) {
+  const { metrics, pipeline } = viewModel;
   return (
     <section className="mt-4 reveal-section">
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -44,8 +42,8 @@ export default function ObservabilityKpiSection({ metrics, pipelineQueued, pipel
         <KpiCard
           icon={<Activity className="h-4 w-4" />}
           label="Pipeline tài liệu"
-          value={`${pipelineQueued + pipelineProcessing} đang chờ/xử lý`}
-          sub={`Lỗi: ${pipelineFailed}`}
+          value={`${pipeline.queued + pipeline.processing} đang chờ/xử lý`}
+          sub={`Lỗi: ${pipeline.failed}`}
           tooltip="Số job tài liệu đang chờ, đang xử lý và số job lỗi (document_processing_jobs). Cảnh báo khi lỗi ≥ 10 hoặc backlog ≥ 200."
         />
       </div>

@@ -1,0 +1,74 @@
+@keyframes sectionReveal {
+    0% {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .reveal-section {
+        animation: sectionReveal 560ms var(--motion-ease-premium) both;
+    }
+
+    .reveal-delay-1 {
+        animation-delay: 90ms;
+    }
+
+    .reveal-delay-2 {
+        animation-delay: 170ms;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reveal-section {
+        animation: none;
+    }
+}
+
+/* Micro-animation: reveal nhẹ khi section vào viewport */
+.reveal-on-scroll {
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+        opacity 0.5s var(--motion-ease-premium),
+        transform 0.5s var(--motion-ease-premium);
+}
+
+.reveal-on-scroll.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reveal-on-scroll {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .reveal-on-scroll.is-visible {
+        opacity: 1;
+    }
+}
+
+/* Skeleton loading cho preview / gallery */
+.preview-skeleton-shimmer {
+    animation: previewShimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes previewShimmer {
+
+    0%,
+    100% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}

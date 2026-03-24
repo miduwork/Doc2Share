@@ -23,7 +23,7 @@ export async function createCategory(name: string, type: CategoryType): Promise<
   revalidatePath("/admin/categories");
   revalidatePath("/admin/documents");
   revalidatePath("/");
-  revalidatePath("/tai-lieu");
+  revalidatePath("/cua-hang");
   return ok(data as CategoryRow);
 }
 
@@ -43,7 +43,7 @@ export async function updateCategory(id: number, name: string): Promise<ActionRe
   revalidatePath("/admin/categories");
   revalidatePath("/admin/documents");
   revalidatePath("/");
-  revalidatePath("/tai-lieu");
+  revalidatePath("/cua-hang");
   return ok(data as CategoryRow);
 }
 
@@ -56,6 +56,6 @@ export async function deleteCategory(id: number): Promise<ActionResult<void>> {
   revalidatePath("/admin/categories");
   revalidatePath("/admin/documents");
   revalidatePath("/");
-  revalidatePath("/tai-lieu");
+  revalidatePath("/cua-hang");
   return ok();
 }

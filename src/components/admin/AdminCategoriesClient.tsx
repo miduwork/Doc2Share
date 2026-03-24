@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import { toast } from "sonner";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   createCategory,
   updateCategory,
@@ -20,12 +21,25 @@ const TYPE_LABELS: Record<string, string> = {
 
 const TYPES: CategoryType[] = ["subject", "grade", "exam"];
 
+function parseTypeParam(value: string | null): CategoryType {
+  if (value === "grade" || value === "exam") return value;
+  return "subject";
+}
+
 export default function AdminCategoriesClient({
   initialCategories,
 }: {
   initialCategories: CategoryRow[];
 }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const activeTypeFromUrl = useMemo(
+    () => parseTypeParam(searchParams.get("section")),
+    [searchParams]
+  );
   const [categories, setCategories] = useState(initialCategories);
+  const [activeType, setActiveType] = useState<CategoryType>(activeTypeFromUrl);
   const [newName, setNewName] = useState<Record<CategoryType, string>>({
     subject: "",
     grade: "",
@@ -39,8 +53,19 @@ export default function AdminCategoriesClient({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
 
+  useEffect(() => {
+    setActiveType(activeTypeFromUrl);
+  }, [activeTypeFromUrl]);
+
   function getList(type: CategoryType) {
     return categories.filter((c) => c.type === type);
+  }
+
+  function handleChangeSection(type: CategoryType) {
+    setActiveType(type);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("section", type);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
   async function handleCreate(type: CategoryType) {
@@ -154,43 +179,55 @@ export default function AdminCategoriesClient({
 
   return (
     <div className="space-y-4">
-      {TYPES.map((type) => (
-        <section
-          key={type}
-          className="overflow-hidden rounded-xl border border-line bg-surface"
-        >
-          <div className="border-b border-line bg-slate-50/80 px-3 py-2 dark:bg-slate-800/50">
-            <h2 className="text-xs font-semibold text-semantic-heading">
-              {TYPE_LABELS[type]}
-            </h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-line p-2.5">
-            <input
-              type="text"
-              value={newName[type]}
-              onChange={(e) => setNewName((p) => ({ ...p, [type]: e.target.value }))}
-              placeholder={`Thêm ${TYPE_LABELS[type].toLowerCase()}...`}
-              className="input-premium w-44 py-1.5 text-sm"
-              onKeyDown={(e) => e.key === "Enter" && handleCreate(type)}
-            />
-            <button
-              type="button"
-              onClick={() => handleCreate(type)}
-              disabled={creating[type]}
-              className="btn-primary flex items-center gap-1 px-2.5 py-1.5 text-xs disabled:opacity-50"
-            >
-              <Plus className="h-3 w-3" /> Thêm
-            </button>
-          </div>
-          <AdminTable<CategoryRow>
-            columns={columns}
-            data={getList(type)}
-            emptyMessage="Chưa có mục nào. Thêm ở trên hoặc chạy script seed trong SQL Editor."
-            getRowId={(r) => String(r.id)}
-            wrapperClassName="overflow-x-auto"
+      <div className="premium-panel flex flex-wrap items-center gap-2 rounded-xl p-2">
+        {TYPES.map((type) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => handleChangeSection(type)}
+            className={`admin-btn-sm ${
+              activeType === type
+                ? "bg-primary text-white"
+                : "border border-line bg-surface text-fg hover:bg-surface-muted"
+            }`}
+          >
+            {TYPE_LABELS[type]}
+          </button>
+        ))}
+      </div>
+
+      <section className="overflow-hidden rounded-xl border border-line bg-surface">
+        <div className="border-b border-line bg-slate-50/80 px-3 py-2 dark:bg-slate-800/50">
+          <h2 className="text-xs font-semibold text-semantic-heading">
+            {TYPE_LABELS[activeType]}
+          </h2>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-line p-2.5">
+          <input
+            type="text"
+            value={newName[activeType]}
+            onChange={(e) => setNewName((p) => ({ ...p, [activeType]: e.target.value }))}
+            placeholder={`Thêm ${TYPE_LABELS[activeType].toLowerCase()}...`}
+            className="input-premium w-44 py-1.5 text-sm"
+            onKeyDown={(e) => e.key === "Enter" && handleCreate(activeType)}
           />
-        </section>
-      ))}
+          <button
+            type="button"
+            onClick={() => handleCreate(activeType)}
+            disabled={creating[activeType]}
+            className="btn-primary flex items-center gap-1 px-2.5 py-1.5 text-xs disabled:opacity-50"
+          >
+            <Plus className="h-3 w-3" /> Thêm
+          </button>
+        </div>
+        <AdminTable<CategoryRow>
+          columns={columns}
+          data={getList(activeType)}
+          emptyMessage="Chưa có mục nào. Thêm ở trên hoặc chạy script seed trong SQL Editor."
+          getRowId={(r) => String(r.id)}
+          wrapperClassName="overflow-x-auto"
+        />
+      </section>
     </div>
   );
 }

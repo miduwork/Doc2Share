@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserWithProfile } from "@/lib/auth/current-user-context";
 import {
   canManageDocuments,
   canManageUsers,
@@ -13,17 +13,7 @@ export type { AdminContext, AdminRole, GuardResult, AdminContextUser, AdminConte
 export { canManageDocuments, canManageUsers, computeAdminContext };
 
 export async function requireAdminContext(): Promise<GuardResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = user
-    ? await supabase
-        .from("profiles")
-        .select("role, admin_role, is_active")
-        .eq("id", user.id)
-        .single()
-    : { data: null };
+  const { user, profile } = await getCurrentUserWithProfile();
   return computeAdminContext(user ?? null, profile as AdminContextProfile);
 }
 

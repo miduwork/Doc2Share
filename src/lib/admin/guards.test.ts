@@ -71,6 +71,18 @@ test("computeAdminContext rejects inactive admin", () => {
   if (!result.ok) assert.equal(result.error, "Bạn không có quyền thực hiện thao tác này.");
 });
 
+test("computeAdminContext rejects currently banned admin", () => {
+  const profile: AdminContextProfile = {
+    role: "admin",
+    admin_role: "super_admin",
+    is_active: true,
+    banned_until: new Date(Date.now() + 5 * 60_000).toISOString(),
+  };
+  const result = computeAdminContext({ id: "u1" }, profile);
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.error, "Bạn không có quyền thực hiện thao tác này.");
+});
+
 test("computeAdminContext returns context for active super_admin", () => {
   const profile: AdminContextProfile = {
     role: "admin",

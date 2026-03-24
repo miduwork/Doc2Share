@@ -1,23 +1,13 @@
-import type { MaintenanceRow, ObservabilityBaseFilters } from "@/app/admin/observability/types";
-import { formatCount, formatTime, toQueryString } from "@/app/admin/observability/utils";
+import type { RunsSectionViewModel } from "@/features/admin/observability/dashboard/model/dashboard.types";
+import { toQueryString } from "@/features/admin/observability/shared/query-string";
+import { formatCount, formatTime } from "@/features/admin/observability/shared/formatters";
 
 interface Props {
-  runs: MaintenanceRow[];
-  runsTotal: number;
-  runsTotalPages: number;
-  runsPage: number;
-  runsExportHref: string;
-  baseFilters: ObservabilityBaseFilters;
+  viewModel: RunsSectionViewModel;
 }
 
-export default function ObservabilityMaintenanceRunsSection({
-  runs,
-  runsTotal,
-  runsTotalPages,
-  runsPage,
-  runsExportHref,
-  baseFilters,
-}: Props) {
+export default function ObservabilityMaintenanceRunsSection({ viewModel }: Props) {
+  const { runs, runsTotal, runsTotalPages, runsPage, runsExportHref, baseFilters } = viewModel;
   return (
     <section className="mt-5 reveal-section">
       <div className="flex items-center justify-between gap-2">

@@ -161,7 +161,7 @@ export default async function AdminDocumentDetailPage({
           <p className="text-muted">ID: {doc.id}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/tai-lieu/${doc.id}/${slugify(doc.title ?? doc.id)}`} className="btn-secondary" target="_blank" rel="noopener noreferrer">
+          <Link href={`/cua-hang/${doc.id}/${slugify(doc.title ?? doc.id)}`} className="btn-secondary" target="_blank" rel="noopener noreferrer">
             Xem trang bán
           </Link>
           <Link href="/admin/documents" className="btn-secondary">

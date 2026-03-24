@@ -35,6 +35,8 @@ function resolveCheckoutDeps(overrides?: Partial<CheckoutActionDeps>): CheckoutA
   };
 }
 
+import { runCheckoutOrchestrator } from "@/lib/domain/checkout/services/checkout-service";
+
 export async function createCheckoutVietQr(
   documentId: string,
   deps?: Partial<CheckoutActionDeps>
@@ -47,22 +49,12 @@ export async function createCheckoutVietQr(
 
   try {
     const { repository, paymentProvider } = resolveCheckoutDeps(deps);
-    const created = await repository.createCheckoutOrder(documentId);
-    const meta = await repository.getOrderMeta(created.orderId);
-    const { transferContent, paymentLink } = paymentProvider.buildCheckoutPayment({
-      orderId: created.orderId,
-      externalId: meta.externalId,
-      amount: created.amount,
+    const result = await runCheckoutOrchestrator({
+      repository,
+      paymentProvider,
+      documentId,
     });
-    return ok({
-      orderId: created.orderId,
-      externalId: meta.externalId,
-      documentTitle: created.documentTitle,
-      amount: created.amount,
-      paymentLink,
-      transferContent,
-      status: meta.status,
-    });
+    return ok(result);
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Không thể tạo đơn hàng.");
   }

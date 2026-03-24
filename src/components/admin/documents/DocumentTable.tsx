@@ -123,7 +123,7 @@ export default function DocumentTable({
                     className="w-20 rounded border border-line bg-surface px-1.5 py-0.5 text-right text-xs text-fg"
                   />
                   {isPriceDirty(doc) && (
-                    <button type="button" onClick={() => savePrice(doc.id)} className="rounded bg-primary-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-primary-700">
+                    <button type="button" onClick={() => savePrice(doc.id)} className="admin-btn-sm rounded-md bg-primary-600 text-white hover:bg-primary-700">
                       Lưu
                     </button>
                   )}
@@ -139,32 +139,32 @@ export default function DocumentTable({
                 <div className="flex flex-wrap gap-1">
                   {activeTab === "crud" ? (
                     <>
-                      <button type="button" onClick={() => onOpenEditModal(doc)} className="rounded-md bg-action-muted px-2 py-1 text-xs font-medium text-action-muted-foreground hover:bg-action hover:text-action-foreground">Sửa</button>
-                      <button type="button" onClick={() => onRemoveDoc(doc.id)} className="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700">Xóa mềm</button>
+                      <button type="button" onClick={() => onOpenEditModal(doc)} className="admin-btn-sm bg-action-muted text-action-muted-foreground hover:bg-action hover:text-action-foreground">Sửa</button>
+                      <button type="button" onClick={() => onRemoveDoc(doc.id)} className="admin-btn-sm bg-red-600 text-white hover:bg-red-700">Xóa mềm</button>
                       {adminRole === "super_admin" && (
-                        <button type="button" onClick={() => onHardDeleteDoc(doc.id)} className="rounded-md bg-red-800 px-2 py-1 text-xs font-medium text-white hover:bg-red-900">Xóa cứng</button>
+                        <button type="button" onClick={() => onHardDeleteDoc(doc.id)} className="admin-btn-sm bg-red-800 text-white hover:bg-red-900">Xóa cứng</button>
                       )}
-                      <Link href={`/tai-lieu/${doc.id}/${slugify(doc.title || doc.id)}`} className="rounded-md bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-700" target="_blank" rel="noopener noreferrer">Xem trang bán</Link>
-                      <Link href={`/admin/documents/${doc.id}`} className="rounded-md bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700">Chi tiết</Link>
+                      <Link href={`/cua-hang/${doc.id}/${slugify(doc.title || doc.id)}`} className="admin-btn-sm bg-sky-600 text-white hover:bg-sky-700" target="_blank" rel="noopener noreferrer">Xem trang bán</Link>
+                      <Link href={`/admin/documents/${doc.id}`} className="admin-btn-sm bg-indigo-600 text-white hover:bg-indigo-700">Chi tiết</Link>
                     </>
                   ) : (
                     <>
                       {doc.approval_status === "pending" && adminRole === "super_admin" ? (
                         <>
-                          <button type="button" onClick={() => onApprove(doc.id)} className="rounded-md bg-emerald-700 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-800">Duyệt</button>
-                          <button type="button" onClick={() => onReject(doc.id)} className="rounded-md bg-orange-600 px-2 py-1 text-xs font-medium text-white hover:bg-orange-700">Từ chối</button>
+                          <button type="button" onClick={() => onApprove(doc.id)} className="admin-btn-sm bg-emerald-700 text-white hover:bg-emerald-800">Duyệt</button>
+                          <button type="button" onClick={() => onReject(doc.id)} className="admin-btn-sm bg-orange-600 text-white hover:bg-orange-700">Từ chối</button>
                         </>
                       ) : doc.status === "failed" || jobByDoc[doc.id]?.status === "failed" ? (
-                        <button type="button" onClick={() => onRetryProcessing(doc.id)} className="rounded-md bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700">Retry xử lý</button>
+                        <button type="button" onClick={() => onRetryProcessing(doc.id)} className="admin-btn-sm bg-indigo-600 text-white hover:bg-indigo-700">Retry xử lý</button>
                       ) : doc.status === "archived" ? (
-                        <button type="button" onClick={() => onChangeStatus(doc.id, "ready")} className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700">Publish</button>
+                        <button type="button" onClick={() => onChangeStatus(doc.id, "ready")} className="admin-btn-sm bg-emerald-600 text-white hover:bg-emerald-700">Publish</button>
                       ) : doc.status === "ready" ? (
-                        <button type="button" onClick={() => onChangeStatus(doc.id, "archived")} className="rounded-md bg-action-muted px-2 py-1 text-xs font-medium text-action-muted-foreground hover:bg-action hover:text-action-foreground">Archive</button>
+                        <button type="button" onClick={() => onChangeStatus(doc.id, "archived")} className="admin-btn-sm bg-action-muted text-action-muted-foreground hover:bg-action hover:text-action-foreground">Archive</button>
                       ) : (
-                        <button type="button" onClick={() => onSubmitApproval(doc.id)} className="rounded-md bg-fuchsia-600 px-2 py-1 text-xs font-medium text-white hover:bg-fuchsia-700">Gửi duyệt</button>
+                        <button type="button" onClick={() => onSubmitApproval(doc.id)} className="admin-btn-sm bg-fuchsia-600 text-white hover:bg-fuchsia-700">Gửi duyệt</button>
                       )}
-                      <Link href={`/tai-lieu/${doc.id}/${slugify(doc.title || doc.id)}`} className="rounded-md bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-700" target="_blank" rel="noopener noreferrer">Xem trang bán</Link>
-                      <Link href={`/admin/documents/${doc.id}`} className="rounded-md bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700">Chi tiết</Link>
+                      <Link href={`/cua-hang/${doc.id}/${slugify(doc.title || doc.id)}`} className="admin-btn-sm bg-sky-600 text-white hover:bg-sky-700" target="_blank" rel="noopener noreferrer">Xem trang bán</Link>
+                      <Link href={`/admin/documents/${doc.id}`} className="admin-btn-sm bg-indigo-600 text-white hover:bg-indigo-700">Chi tiết</Link>
                     </>
                   )}
                 </div>

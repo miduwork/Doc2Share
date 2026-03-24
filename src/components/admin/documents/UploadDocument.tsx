@@ -21,7 +21,7 @@ import {
   buildFormDataFromQueueItem,
 } from "./upload/upload-queue-types";
 import { UploadDocumentDraftSection } from "./upload/UploadDocumentDraftSection";
-import { UploadDocumentFormFields } from "./upload/UploadDocumentFormFields";
+import { UploadDocumentFileFields, UploadDocumentFormFields } from "./upload/UploadDocumentFormFields";
 import { UploadDocumentQueueSection } from "./upload/UploadDocumentQueueSection";
 
 interface Props {
@@ -257,6 +257,44 @@ export default function UploadDocument({ categories, onSuccess }: Props) {
         exams={exams}
       />
 
+      <UploadDocumentFileFields register={register} errors={errors} />
+
+      <section className="premium-panel space-y-2 border-transparent p-2.5 shadow-none" aria-label="Hành động tải lên">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <button
+            type="submit"
+            disabled={uploading}
+            className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-sm font-medium text-white transition hover:bg-primary-700 disabled:opacity-50"
+          >
+            <Upload className="h-4 w-4" aria-hidden />
+            {uploading ? "Đang xử lý..." : draftSessionId ? "Gắn file và hoàn tất" : "Tải lên ngay"}
+          </button>
+          <button
+            type="button"
+            disabled={uploading || queue.length >= MAX_QUEUE_SIZE}
+            onClick={handleSubmit(addToQueue)}
+            className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium text-fg transition hover:bg-surface-muted disabled:opacity-50"
+          >
+            <ListOrdered className="h-4 w-4" aria-hidden />
+            Thêm vào hàng đợi
+          </button>
+          <button
+            type="button"
+            disabled={uploading || savingDraft}
+            onClick={handleSaveDraft}
+            className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-line bg-surface-muted/50 px-3.5 py-2 text-sm font-medium text-muted transition hover:border-primary/50 hover:text-fg disabled:opacity-50"
+            aria-label="Lưu nháp chỉ metadata, không cần chọn file"
+          >
+            {savingDraft ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <FileText className="h-4 w-4" aria-hidden />
+            )}
+            {savingDraft ? "Đang lưu…" : "Lưu nháp"}
+          </button>
+        </div>
+      </section>
+
       {uploading && (
         <div className="rounded-lg bg-surface-muted" role="status" aria-live="polite">
           <div className="flex items-center gap-2 px-3 py-2">
@@ -278,40 +316,6 @@ export default function UploadDocument({ categories, onSuccess }: Props) {
           </div>
         </div>
       )}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="submit"
-          disabled={uploading}
-          className="flex items-center justify-center gap-2 rounded-xl bg-primary py-3.5 px-8 font-semibold text-white transition hover:bg-primary-700 disabled:opacity-50"
-        >
-          <Upload className="h-5 w-5" aria-hidden />
-          {uploading ? "Đang xử lý..." : draftSessionId ? "Gắn file và hoàn tất" : "Tải lên ngay"}
-        </button>
-        <button
-          type="button"
-          disabled={uploading || queue.length >= MAX_QUEUE_SIZE}
-          onClick={handleSubmit(addToQueue)}
-          className="flex items-center justify-center gap-2 rounded-xl border border-line bg-surface py-3.5 px-6 font-semibold text-fg transition hover:bg-surface-muted disabled:opacity-50"
-        >
-          <ListOrdered className="h-5 w-5" aria-hidden />
-          Thêm vào hàng đợi
-        </button>
-        <button
-          type="button"
-          disabled={uploading || savingDraft}
-          onClick={handleSaveDraft}
-          className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-surface-muted/50 py-3.5 px-6 font-medium text-muted transition hover:border-primary/50 hover:text-fg disabled:opacity-50"
-          aria-label="Lưu nháp chỉ metadata, không cần chọn file"
-        >
-          {savingDraft ? (
-            <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-          ) : (
-            <FileText className="h-5 w-5" aria-hidden />
-          )}
-          {savingDraft ? "Đang lưu…" : "Lưu nháp"}
-        </button>
-      </div>
 
       <UploadDocumentQueueSection
         queue={queue}

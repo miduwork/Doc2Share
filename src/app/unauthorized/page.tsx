@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ShieldX } from "lucide-react";
-import PublicLayout from "@/components/layout/PublicLayout";
+import PublicLayout from "@/features/layout/components/PublicLayout";
 
 export default function UnauthorizedPage() {
   return (
@@ -20,7 +20,7 @@ export default function UnauthorizedPage() {
           <Link href="/" className="btn-secondary">
             Về trang chủ
           </Link>
-          <Link href="/dashboard" className="btn-primary">
+          <Link href="/tu-sach" className="btn-primary">
             Tủ sách
           </Link>
         </div>

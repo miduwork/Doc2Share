@@ -12,13 +12,16 @@ import {
   computeIsSuperAdmin,
   evaluateDeviceGate,
   evaluateDocumentPermission,
-  evaluateSessionDevice,
   isProfileActive,
   parsePositiveIntEnv,
   SECURE_ACCESS_DEFAULTS,
   wouldExceedHighFreqDistinctDocs,
   wouldExceedHourlySuccessLimit,
 } from "@/lib/secure-access/secure-access-core";
+import {
+  evaluateApiSessionBinding,
+  toSessionBindingErrorMessage,
+} from "@/lib/auth/session-binding-adapter";
 
 const RATE_LIMIT_VIEWS_PER_HOUR = parsePositiveIntEnv(
   process.env.RATE_LIMIT_VIEWS_PER_HOUR,
@@ -115,6 +118,7 @@ export async function runNextSecureDocumentAccess({
       deviceId,
       reason,
       requestId,
+      correlationId: requestId,
       latencyMs: Date.now() - startedAt,
     }).catch(() => {});
     return res;
@@ -159,7 +163,7 @@ export async function runNextSecureDocumentAccess({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, admin_role, is_active")
+    .select("role, admin_role, is_active, banned_until")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -174,6 +178,9 @@ export async function runNextSecureDocumentAccess({
   const isAdminCanReadAny = computeIsAdminCanReadAny(profile);
 
   if (!isSuperAdmin) {
+    // Current low-risk policy: bind by latest active session row via user_id + device_id.
+    // Phase-3 optimization (cookie-first by doc2share_sid) is intentionally deferred
+    // because it changes secure-access contract across Next/Edge paths.
     const [{ data: devices }, { data: activeSession }] = await Promise.all([
       supabase.from("device_logs").select("device_id").eq("user_id", user.id),
       service
@@ -212,17 +219,14 @@ export async function runNextSecureDocumentAccess({
       );
     }
 
-    const sessionGate = evaluateSessionDevice(activeSession?.device_id, deviceId, isSuperAdmin);
+    const sessionGate = evaluateApiSessionBinding(activeSession?.device_id, deviceId, isSuperAdmin);
     if (!sessionGate.ok) {
       if (sessionGate.reason === "no_active_session") {
         return {
           ok: false,
           response: logBlocked(
             "no_active_session",
-            NextResponse.json(
-              { error: "Phiên chưa được đăng ký. Vui lòng vào Tủ sách rồi mở Đọc." },
-              { status: 403 }
-            )
+            NextResponse.json({ error: toSessionBindingErrorMessage("no_active_session") }, { status: 403 })
           ),
         };
       }
@@ -230,13 +234,7 @@ export async function runNextSecureDocumentAccess({
         ok: false,
         response: logBlocked(
           "device_mismatch",
-          NextResponse.json(
-            {
-              error:
-                "Phiên đăng nhập đang được sử dụng trên thiết bị khác. Vui lòng đăng xuất trên thiết bị kia hoặc đăng nhập lại trên thiết bị này.",
-            },
-            { status: 403 }
-          )
+          NextResponse.json({ error: toSessionBindingErrorMessage("device_mismatch") }, { status: 403 })
         ),
       };
     }
@@ -343,6 +341,7 @@ export async function runNextSecureDocumentAccess({
           ipAddress: ip,
           deviceId,
           requestId,
+          correlationId: requestId,
           latencyMs: Date.now() - startedAt,
         }).catch(() => {});
       },

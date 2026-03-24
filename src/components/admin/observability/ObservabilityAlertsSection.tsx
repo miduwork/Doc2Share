@@ -1,45 +1,30 @@
-import type { AlertEventRow, LatestRunAlertItem, ObservabilityBaseFilters } from "@/app/admin/observability/types";
-import { formatTime, severityClass, toQueryString } from "@/app/admin/observability/utils";
+import type { AlertsSectionViewModel } from "@/features/admin/observability/dashboard/model/dashboard.types";
+import { toQueryString } from "@/features/admin/observability/shared/query-string";
+import { formatTime, severityClass } from "@/features/admin/observability/shared/formatters";
 import IncidentAutoRefresh from "@/components/admin/observability/IncidentAutoRefresh";
 
 interface Props {
-  selectedPreset: string;
-  selectedWindow: string;
-  selectedSeverity: string;
-  selectedSource: string;
-  selectedEventType: string;
-  alertsPageSize: number;
-  runsPageSize: number;
-  exportLimit: number;
-  baseFilters: ObservabilityBaseFilters;
-  alertsExportHref: string;
-  sourceOptions: string[];
-  eventTypeOptions: string[];
-  latestRunAlerts: LatestRunAlertItem[];
-  alertEvents: AlertEventRow[];
-  alertsCursorResult: {
-    nextCursor: string | null;
-    prevCursor: string | null;
-  };
+  viewModel: AlertsSectionViewModel;
 }
 
-export default function ObservabilityAlertsSection({
-  selectedPreset,
-  selectedWindow,
-  selectedSeverity,
-  selectedSource,
-  selectedEventType,
-  alertsPageSize,
-  runsPageSize,
-  exportLimit,
-  baseFilters,
-  alertsExportHref,
-  sourceOptions,
-  eventTypeOptions,
-  latestRunAlerts,
-  alertEvents,
-  alertsCursorResult,
-}: Props) {
+export default function ObservabilityAlertsSection({ viewModel }: Props) {
+  const {
+    selectedPreset,
+    selectedWindow,
+    selectedSeverity,
+    selectedSource,
+    selectedEventType,
+    alertsPageSize,
+    runsPageSize,
+    exportLimit,
+    baseFilters,
+    alertsExportHref,
+    sourceOptions,
+    eventTypeOptions,
+    latestRunAlerts,
+    alertEvents,
+    pagination,
+  } = viewModel;
   return (
     <section id="alerts-panel" className="mt-5 reveal-section">
       <h2 className="text-sm font-semibold text-semantic-heading">Alerts gần nhất</h2>
@@ -267,20 +252,20 @@ export default function ObservabilityAlertsSection({
             <a
               href={`/admin/observability?${toQueryString({
                 ...baseFilters,
-                alerts_cursor: alertsCursorResult.prevCursor ?? "",
+                alerts_cursor: pagination.prevCursor ?? "",
                 alerts_dir: "prev",
               })}`}
-              className={`btn-secondary px-2.5 py-1 text-xs ${!alertsCursorResult.prevCursor ? "pointer-events-none opacity-50" : ""}`}
+              className={`btn-secondary px-2.5 py-1 text-xs ${!pagination.prevCursor ? "pointer-events-none opacity-50" : ""}`}
             >
               Newer
             </a>
             <a
               href={`/admin/observability?${toQueryString({
                 ...baseFilters,
-                alerts_cursor: alertsCursorResult.nextCursor ?? "",
+                alerts_cursor: pagination.nextCursor ?? "",
                 alerts_dir: "next",
               })}`}
-              className={`btn-secondary px-2.5 py-1 text-xs ${!alertsCursorResult.nextCursor ? "pointer-events-none opacity-50" : ""}`}
+              className={`btn-secondary px-2.5 py-1 text-xs ${!pagination.nextCursor ? "pointer-events-none opacity-50" : ""}`}
             >
               Older
             </a>

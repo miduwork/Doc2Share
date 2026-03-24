@@ -1,9 +1,33 @@
 {
-  "extends": "next/core-web-vitals",
+  "extends": [
+    "next/core-web-vitals",
+    "plugin:storybook/recommended"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "**/*.stories.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "storybook/no-renderer-packages": "off"
+      }
+    },
+    {
+      "files": [
+        "src/stories/**/*.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "react/no-unescaped-entities": "off"
+      }
+    }
+  ],
   "rules": {
     "no-unused-vars": [
       "warn",
-      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
     ]
   }
 }

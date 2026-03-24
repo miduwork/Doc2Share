@@ -10,6 +10,8 @@ import {
   type DocumentsActionDeps,
 } from "./document-manage-action-shared";
 
+import { validateDocumentForPublish } from "@/lib/domain/documents/services/document-lifecycle";
+
 export async function deleteDocument(
   input: {
     documentId: string;
@@ -58,14 +60,9 @@ export async function setDocumentStatus(
     if (input.targetStatus === "ready") {
       const doc = await repository.getDocumentPublishGate(documentId);
       if (!doc) return fail("Không tìm thấy tài liệu.");
-      const missing: string[] = [];
-      if (!doc.title) missing.push("title");
-      if (!doc.file_path) missing.push("file_path");
-      if (!doc.thumbnail_url) missing.push("thumbnail_url");
-      if (missing.length) return fail(`Không thể publish. Thiếu: ${missing.join(", ")}.`);
-      if (doc.approval_status !== "approved") {
-        return fail("Không thể publish. Tài liệu chưa được duyệt (approval_status=approved).");
-      }
+
+      const validation = validateDocumentForPublish(doc);
+      if (!validation.ok) return fail(validation.error);
     }
 
     const result = await repository.updateDocumentAdmin({

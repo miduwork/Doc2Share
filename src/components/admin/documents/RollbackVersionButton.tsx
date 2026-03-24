@@ -39,7 +39,7 @@ export default function RollbackVersionButton({ documentId, versionId, versionNo
       type="button"
       onClick={handleClick}
       disabled={loading}
-      className="rounded-md bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+      className="admin-btn-sm bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
     >
       {loading ? "Đang xử lý…" : "Rollback về version này"}
     </button>

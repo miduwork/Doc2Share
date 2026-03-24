@@ -1,8 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { DollarSign, ShoppingCart, FileText, Clock } from "lucide-react";
-import RevenueChart from "@/components/admin/RevenueChart";
+import dynamic from "next/dynamic";
 import OverviewRangeSelect from "@/components/admin/OverviewRangeSelect";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
+
+const RevenueChart = dynamic(() => import("@/components/admin/RevenueChart"), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />,
+});
 import { redirect } from "next/navigation";
 import { requireSuperAdminContext } from "@/lib/admin/guards";
 import Link from "next/link";

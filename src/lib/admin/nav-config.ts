@@ -46,7 +46,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     items: [
       { href: "/admin/documents", label: "Tài liệu", icon: "FileText", roles: ["super_admin", "content_manager"] },
       { href: "/admin/categories", label: "Danh mục", icon: "BookMarked", roles: ["super_admin", "content_manager"] },
-      { href: "/admin/documents/bulk-history", label: "Lịch sử bulk", icon: "History", roles: ["super_admin", "content_manager"] },
     ],
   },
   {

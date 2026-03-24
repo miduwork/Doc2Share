@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url("../styles/admin.css");
+@import url("../styles/cards.css");
+@import url("../styles/animations.css");
+
 :root {
   --foreground: #0f172a;
   --background: #f6f8fc;
@@ -114,11 +118,13 @@ body {
   transform: translateY(-120%);
   transition: transform 0.2s ease;
 }
+
 .skip-link:focus {
   transform: translateY(0);
   outline: 2px solid var(--primary-foreground);
   outline-offset: 2px;
 }
+
 @media (prefers-reduced-motion: reduce) {
   .skip-link {
     transition: none;
@@ -130,18 +136,22 @@ body {
   line-height: 1.6;
   color: var(--text-body);
 }
+
 .content-prose p {
   margin-bottom: 0.75em;
 }
+
 .content-prose p:last-child {
   margin-bottom: 0;
 }
+
 /* Link trong nội dung văn bản: gạch chân + màu để dễ nhận diện (accessibility) */
 .content-prose a[href] {
   color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 0.2em;
 }
+
 .content-prose a[href]:hover {
   color: var(--primary-700);
 }
@@ -158,40 +168,44 @@ body {
   }
 
   .section-container {
-    @apply mx-auto w-full max-w-7xl px-4;
+    width: 100%;
+    max-width: 80rem;
+    /* 1280px */
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    position: relative;
+    /* Cho phép absolute children center thô */
   }
 
-  .premium-panel {
-    @apply rounded-3xl border border-line bg-surface shadow-card backdrop-blur-sm;
-    transition:
-      border-color 260ms var(--motion-ease-premium),
-      box-shadow 260ms var(--motion-ease-premium),
-      background-color 260ms var(--motion-ease-premium);
+  /* Force branding text visibility on desktop */
+  @media (min-width: 640px) {
+    .logo-text {
+      display: inline-block !important;
+    }
   }
 
-  .premium-card {
-    @apply rounded-3xl border border-line bg-surface-card shadow-card transition duration-300;
-    transition:
-      transform 300ms var(--motion-ease-premium),
-      border-color 300ms var(--motion-ease-premium),
-      box-shadow 300ms var(--motion-ease-premium),
-      background-color 300ms var(--motion-ease-premium);
+  @media (max-width: 767px) {
+    .desktop-nav {
+      display: none !important;
+    }
   }
 
-  /* Light: shadow nhẹ hơn; dark: giữ shadow đậm để nổi trên nền tối */
-  .premium-card-hover {
-    @apply hover:-translate-y-1 hover:border-primary-300 dark:hover:border-primary-600;
-    transition:
-      transform 300ms var(--motion-ease-premium),
-      border-color 300ms var(--motion-ease-premium),
-      box-shadow 300ms var(--motion-ease-premium);
+  /* Perfect horizontal centering Regardless of siblings */
+  @media (min-width: 768px) {
+    .absolute-center-nav {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: auto;
+      display: flex !important;
+      align-items: center;
+      gap: 1.5rem;
+    }
   }
-  .premium-card-hover:hover {
-    box-shadow: 0 12px 24px -12px rgb(15 23 42 / 0.08), 0 6px 12px -8px rgb(15 23 42 / 0.06), 0 0 0 1px rgb(29 78 216 / 0.06);
-  }
-  html.dark .premium-card-hover:hover {
-    box-shadow: 0 20px 40px -24px rgb(0 0 0 / 0.5), 0 12px 24px -16px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(59 130 246 / 0.15);
-  }
+
+
 
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-card transition hover:bg-primary-700 hover:shadow-cardHover active:scale-[0.98];
@@ -213,149 +227,43 @@ body {
       color 220ms var(--motion-ease-premium);
   }
 
+  .admin-btn-sm {
+    @apply inline-flex min-h-8 items-center justify-center rounded-md px-2.5 py-1 text-xs font-medium;
+  }
+
+  .admin-btn-md {
+    @apply inline-flex min-h-10 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold;
+  }
+
   .input-premium {
     @apply w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-fg outline-none transition focus:border-primary-400;
   }
 }
 
-@keyframes sectionReveal {
-  0% {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
-@media (prefers-reduced-motion: no-preference) {
-  .reveal-section {
-    animation: sectionReveal 560ms var(--motion-ease-premium) both;
-  }
 
-  .reveal-delay-1 {
-    animation-delay: 90ms;
-  }
 
-  .reveal-delay-2 {
-    animation-delay: 170ms;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal-section {
-    animation: none;
-  }
-}
-
-/* Micro-animation: reveal nhẹ khi section vào viewport */
-.reveal-on-scroll {
-  opacity: 0;
-  transform: translateY(12px);
-  transition:
-    opacity 0.5s var(--motion-ease-premium),
-    transform 0.5s var(--motion-ease-premium);
-}
-.reveal-on-scroll.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-@media (prefers-reduced-motion: reduce) {
-  .reveal-on-scroll {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-  .reveal-on-scroll.is-visible {
-    opacity: 1;
-  }
-}
-
-/* Document cards – thiết kế mới: bắt mắt, chuyên nghiệp, CTA rõ ràng */
-.micro-card.rounded-2xl {
-  border-radius: 1rem;
-}
-.doc-card-cover {
-  @apply aspect-[4/3] overflow-hidden rounded-t-2xl bg-gradient-to-br from-primary-50 via-white to-emerald-50/80 dark:from-slate-800 dark:to-slate-800/80;
-}
-.doc-card-cover-inner {
-  @apply absolute inset-0 rounded-t-2xl ring-1 ring-inset ring-black/5 dark:ring-white/5;
-}
-.doc-card-cover-hover-overlay {
-  @apply pointer-events-none absolute inset-0 z-[1] rounded-t-2xl opacity-0;
-  transition: opacity 300ms var(--motion-ease-premium);
-  background: linear-gradient(to top, color-mix(in srgb, var(--primary-900) 30%, transparent), transparent, transparent);
-}
-.micro-card:hover .doc-card-cover-hover-overlay {
-  @apply opacity-100;
-}
-@media (prefers-reduced-motion: reduce) {
-  .doc-card-cover-hover-overlay {
-    transition: none;
-  }
-}
-
-.doc-card-cta {
-  @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-3 text-base font-semibold transition hover:translate-y-[-1px] active:translate-y-0;
-  background-color: var(--color-action);
-  color: var(--color-action-foreground);
-  border-radius: var(--radius-button);
-  box-shadow: var(--shadow-action);
-}
-.doc-card-cta:hover {
-  background-color: var(--color-action-hover);
-  box-shadow: var(--shadow-action-hover);
-}
-.doc-card-cta:active {
-  box-shadow: 0 2px 6px rgb(29 78 216 / 0.3);
-}
 
 /* Sticky CTA – cố định chân trang (Mobile) / bên phải (PC); safe area cho notch/home indicator */
 .cta-sticky-mobile {
-  @apply fixed bottom-0 left-0 right-0 z-40 border-t border-line bg-surface p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur sm:relative sm:bottom-auto sm:border-0 sm:shadow-none;
+  @apply fixed bottom-0 left-0 right-0 z-40 border-t border-line bg-surface p-4 backdrop-blur sm:relative sm:bottom-auto sm:border-0 sm:shadow-none;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
   padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
 }
 
-.section-spacing-sm { @apply py-6 sm:py-8; }
-.section-spacing { @apply py-8 sm:py-10; }
-.section-spacing-lg { @apply py-12 sm:py-16; }
-
-/* ========== Admin Console ========== */
-.admin-heading {
-  font-family: var(--font-display), "Plus Jakarta Sans", system-ui, sans-serif;
-  letter-spacing: -0.02em;
+.section-spacing-sm {
+  @apply py-6 sm:py-8;
 }
 
-.admin-breadcrumb-link:hover {
-  color: var(--primary-600);
-}
-html.dark .admin-breadcrumb-link:hover {
-  color: var(--primary-400);
+.section-spacing {
+  @apply py-8 sm:py-10;
 }
 
-.admin-sidebar {
-  --admin-sidebar-bg: rgba(248, 250, 252, 0.95);
-  --admin-sidebar-border: var(--border);
-}
-html.dark .admin-sidebar {
-  --admin-sidebar-bg: rgba(2, 6, 23, 0.95);
-  --admin-sidebar-border: rgba(42, 58, 90, 0.8);
+.section-spacing-lg {
+  @apply py-12 sm:py-16;
 }
 
-.admin-brand:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
 
-.admin-nav-active {
-  border-left: 2px solid var(--primary-500);
-  margin-left: -1px;
-  padding-left: calc(0.625rem + 1px);
-}
-html.dark .admin-nav-active {
-  border-left-color: var(--primary-400);
-}
 
 /* Secure reader */
 .reader-fullscreen {
@@ -372,13 +280,14 @@ html.dark .admin-nav-active {
 
 /* Filter pills / sidebar – trực quan */
 .filter-pill {
-  @apply rounded-xl border border-line bg-surface px-4 py-2 text-sm font-medium text-fg transition hover:border-primary-300 hover:bg-action-muted hover:text-action-muted-foreground;
+  @apply min-h-[44px] rounded-xl border border-line bg-surface px-4 py-2 text-sm font-medium text-fg transition hover:border-primary-300 hover:bg-action-muted hover:text-action-muted-foreground focus-visible:ring-2 focus-visible:ring-primary;
   transition:
     border-color 220ms var(--motion-ease-premium),
     background-color 220ms var(--motion-ease-premium),
     color 220ms var(--motion-ease-premium),
     transform 220ms var(--motion-ease-premium);
 }
+
 .dark .filter-pill:hover {
   background-color: color-mix(in srgb, var(--primary-900) 20%, var(--surface));
 }
@@ -386,67 +295,7 @@ html.dark .admin-nav-active {
 .filter-pill-active {
   @apply border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-500 dark:text-primary-300;
 }
+
 .dark .filter-pill-active {
   background-color: color-mix(in srgb, var(--primary-900) 30%, var(--surface));
-}
-
-/* Premium micro interaction for document cards */
-.micro-card {
-  --card-rx: 0deg;
-  --card-ry: 0deg;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .micro-card {
-    transform: perspective(900px) rotateX(var(--card-rx)) rotateY(var(--card-ry));
-    transform-origin: center;
-    will-change: transform;
-  }
-}
-
-.card-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-
-.card-shimmer::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(110deg, transparent 35%, color-mix(in srgb, white 30%, transparent) 50%, transparent 65%);
-  transform: translateX(-130%);
-  opacity: 0;
-  transition:
-    transform 850ms var(--motion-ease-premium),
-    opacity 300ms var(--motion-ease-premium);
-  pointer-events: none;
-}
-html.dark .card-shimmer::after {
-  background: linear-gradient(110deg, transparent 35%, color-mix(in srgb, white 22%, transparent) 50%, transparent 65%);
-}
-
-.micro-card:hover .card-shimmer::after {
-  transform: translateX(120%);
-  opacity: 0.9;
-}
-
-/* Skeleton loading cho preview / gallery */
-.preview-skeleton-shimmer {
-  animation: previewShimmer 1.5s ease-in-out infinite;
-}
-@keyframes previewShimmer {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .micro-card {
-    transform: none !important;
-  }
-
-  .card-shimmer::after {
-    transition: none;
-    opacity: 0;
-    transform: translateX(-130%);
-  }
 }

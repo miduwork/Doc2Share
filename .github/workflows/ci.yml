@@ -11,18 +11,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
+      - name: Setup Node and install deps
+        uses: ./.github/actions/setup-node-npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Check Node ↔ Edge sync
+        run: npm run check:sync
 
       - name: Lint
         run: npm run lint
 
-      - name: Unit tests
+      - name: Unit tests with coverage
         run: npm run test
 
       - name: Build
@@ -30,3 +28,30 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIn0.placeholder
+
+  e2e-tests:
+    needs: lint-test-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node and install deps
+        uses: ./.github/actions/setup-node-npm
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIn0.placeholder
+
+  observability-tests:
+    needs: lint-test-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node and install deps
+        uses: ./.github/actions/setup-node-npm
+
+      - name: Observability test suite
+        run: npm run test:observability
