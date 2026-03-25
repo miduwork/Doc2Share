@@ -7,8 +7,10 @@
     "node": ">=22"
   },
   "scripts": {
+    "copy:pdf-worker": "node scripts/copy-pdf-worker.mjs",
+    "postinstall": "npm run copy:pdf-worker",
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run copy:pdf-worker && next build",
     "analyze": "cross-env ANALYZE=true next build",
     "start": "next start",
     "lint": "next lint && npm run lint:auth-boundary",

@@ -8,6 +8,7 @@ import { mapAuthError } from "@/lib/authErrors";
 import { createClient } from "@/lib/supabase/client";
 import { BookOpen } from "lucide-react";
 import { loginWithPassword } from "@/app/login/actions";
+import { collectHardwareFingerprint } from "@/lib/auth/fingerprint";
 import AuthPageShell from "@/features/auth/components/AuthPageShell";
 import AuthError from "@/features/auth/components/AuthError";
 
@@ -42,7 +43,8 @@ export default function LoginForm() {
     setLoading(true);
 
     const deviceId = getDeviceId();
-    const loginResult = await loginWithPassword(email, password, deviceId);
+    const { signalsSummary, hardwareHash } = await collectHardwareFingerprint();
+    const loginResult = await loginWithPassword(email, password, deviceId, signalsSummary, hardwareHash);
 
     setLoading(false);
     if (!loginResult.ok) {

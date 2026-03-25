@@ -9,6 +9,7 @@ import type {
 
 type BuildSectionViewModelsInput = {
   metrics: KpiSectionViewModel["metrics"];
+  watermarkDegraded24h: number;
   pipelineQueued: number;
   pipelineProcessing: number;
   pipelineFailed: number;
@@ -33,6 +34,7 @@ export function buildObservabilitySectionViewModels(input: BuildSectionViewModel
   return {
     kpi: {
       metrics: input.metrics,
+      watermarkDegraded24h: input.watermarkDegraded24h,
       pipeline: {
         queued: input.pipelineQueued,
         processing: input.pipelineProcessing,

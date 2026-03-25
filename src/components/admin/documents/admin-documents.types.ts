@@ -14,6 +14,7 @@ export interface DocRow {
   data_quality_status?: string;
   quality_flags?: string[];
   approval_status?: string;
+  is_high_value: boolean;
   created_at: string;
 }
 
@@ -61,6 +62,7 @@ export interface EditFormState {
   grade_id: number | null;
   exam_id: number | null;
   is_downloadable: boolean;
+  is_high_value: boolean;
   status: DocumentStatusOption;
 }
 

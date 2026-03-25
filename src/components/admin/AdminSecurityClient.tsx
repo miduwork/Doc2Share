@@ -32,6 +32,7 @@ import AdminSecuritySessionsSection from "@/components/admin/security/AdminSecur
 import AdminSecurityAccessLogsSection from "@/components/admin/security/AdminSecurityAccessLogsSection";
 import AdminSecuritySecurityLogsSection from "@/components/admin/security/AdminSecuritySecurityLogsSection";
 import AdminSecurityBenchmarkSection from "@/components/admin/security/AdminSecurityBenchmarkSection";
+import AdminSecurityForensicSection from "@/components/admin/security/AdminSecurityForensicSection";
 import type { SecurityWorkspace } from "@/lib/admin/security-workspace";
 
 export default function AdminSecurityClient({
@@ -205,61 +206,62 @@ export default function AdminSecurityClient({
   return (
     <div className="mt-4 space-y-5">
       {workspace === "logs" ? (
-      <AdminSecurityFiltersSection
-        filters={normalizedFilters}
-        exporting={exporting}
-        onApplyFilters={resetCursorParams}
-        onExportByAction={exportByAction}
-        onPatchQuery={(patch) => router.push(withQuery(patch))}
-      />
+        <AdminSecurityFiltersSection
+          filters={normalizedFilters}
+          exporting={exporting}
+          onApplyFilters={resetCursorParams}
+          onExportByAction={exportByAction}
+          onPatchQuery={(patch) => router.push(withQuery(patch))}
+        />
       ) : null}
       {workspace === "geo" ? <AdminSecurityGeoSection geoPoints={geoPoints ?? []} /> : null}
       {workspace === "overview" ? (
         <>
-      <AdminSecurityHighRiskSection
-        highRiskUsers={highRiskUsers ?? []}
-        revoking={revoking}
-        panicUserId={panicUserId}
-        onRevokeSession={revokeSession}
-        onTemporaryBan={temporaryBan}
-        onPanic={panic}
-      />
-      <AdminSecurityWeeklyIncidentsSection
-        weeklyStats={
-          weeklyStats ?? {
-            weekStartIso: "",
-            totalIncidents: 0,
-            confirmedRisk: 0,
-            manualFalsePositive: 0,
-            proxyFalsePositive: 0,
-          }
-        }
-        incidents={incidents ?? []}
-        onReviewIncident={reviewIncident}
-      />
-      <AdminSecuritySessionsSection activeSessions={activeSessions ?? []} onForceLogoutSession={forceLogoutSession} />
+          <AdminSecurityHighRiskSection
+            highRiskUsers={highRiskUsers ?? []}
+            revoking={revoking}
+            panicUserId={panicUserId}
+            onRevokeSession={revokeSession}
+            onTemporaryBan={temporaryBan}
+            onPanic={panic}
+          />
+          <AdminSecurityWeeklyIncidentsSection
+            weeklyStats={
+              weeklyStats ?? {
+                weekStartIso: "",
+                totalIncidents: 0,
+                confirmedRisk: 0,
+                manualFalsePositive: 0,
+                proxyFalsePositive: 0,
+              }
+            }
+            incidents={incidents ?? []}
+            onReviewIncident={reviewIncident}
+          />
+          <AdminSecuritySessionsSection activeSessions={activeSessions ?? []} onForceLogoutSession={forceLogoutSession} />
         </>
       ) : null}
       {workspace === "logs" ? (
         <>
-      <AdminSecurityAccessLogsSection
-        accessLogs={accessLogs ?? []}
-        accessPagination={normalizedAccessPagination}
-        exportAccessUrl={normalizedExportUrls.access}
-        withQuery={withQuery}
-      />
-      <AdminSecuritySecurityLogsSection
-        logs={logs ?? []}
-        securityPagination={normalizedSecurityPagination}
-        exportSecurityUrl={normalizedExportUrls.security}
-        withQuery={withQuery}
-        revoking={revoking}
-        onRevokeSession={revokeSession}
-        onTemporaryBan={temporaryBan}
-      />
+          <AdminSecurityAccessLogsSection
+            accessLogs={accessLogs ?? []}
+            accessPagination={normalizedAccessPagination}
+            exportAccessUrl={normalizedExportUrls.access}
+            withQuery={withQuery}
+          />
+          <AdminSecuritySecurityLogsSection
+            logs={logs ?? []}
+            securityPagination={normalizedSecurityPagination}
+            exportSecurityUrl={normalizedExportUrls.security}
+            withQuery={withQuery}
+            revoking={revoking}
+            onRevokeSession={revokeSession}
+            onTemporaryBan={temporaryBan}
+          />
         </>
       ) : null}
       {workspace === "benchmark" ? <AdminSecurityBenchmarkSection benchmark={benchmark} /> : null}
+      {workspace === "forensic" ? <AdminSecurityForensicSection /> : null}
     </div>
   );
 }

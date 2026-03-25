@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
+
+export const dynamic = "force-dynamic";
 import { isSingleSessionValidForCurrentUser } from "@/lib/auth/single-session";
 import { canManageDocuments } from "@/lib/admin/guards-core";
 import SecureReader from "@/features/documents/read/components/SecureReader";
@@ -71,11 +74,43 @@ export default async function ReadDocumentPage({ params }: Props) {
     }
   }
 
+  const service = createServiceRoleClient();
+  const { data: docStorage, error: docStorageError } = await service
+    .from("documents")
+    .select("file_path")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (docStorageError) {
+    return (
+      <div className="content-prose flex min-h-screen flex-col items-center justify-center gap-3">
+        <p className="text-center text-slate-600">
+          Không kiểm tra được trạng thái file tài liệu. Vui lòng thử lại sau hoặc{" "}
+          <Link href="/tu-sach">về Tủ sách</Link>.
+        </p>
+      </div>
+    );
+  }
+
+  const filePathReady = typeof docStorage?.file_path === "string" && docStorage.file_path.trim() !== "";
+  if (!filePathReady) {
+    return (
+      <div className="content-prose flex min-h-screen flex-col items-center justify-center gap-3">
+        <p className="text-center text-slate-600 max-w-md">
+          Tài liệu chưa sẵn sàng để đọc (file đang xử lý trong pipeline hoặc chưa được gắn vào bản ghi). Thử lại sau
+          hoặc kiểm tra trạng thái xử lý trong quản trị.
+        </p>
+        <Link href="/tu-sach" className="text-blue-600 underline">
+          Về Tủ sách
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <SecureReader
       documentId={id}
       documentTitle={doc.title}
-      userEmail={user.email ?? ""}
     />
   );
 }

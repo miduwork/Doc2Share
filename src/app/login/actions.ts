@@ -22,7 +22,13 @@ function getClientIp(hd: Headers): string {
 /**
  * Đăng nhập bằng email/password với rate limit theo IP, hỗ trợ đăng ký thiết bị/phiên tập trung.
  */
-export async function loginWithPassword(email: string, password: string, deviceId?: string): Promise<ActionResult<void>> {
+export async function loginWithPassword(
+  email: string,
+  password: string,
+  deviceId?: string,
+  hardwareFingerprint?: any,
+  hardwareHash?: string
+): Promise<ActionResult<void>> {
   let ip = "unknown";
   try {
     const hd = await headers();
@@ -53,7 +59,7 @@ export async function loginWithPassword(email: string, password: string, deviceI
   await logLoginAttempt({ userId: user?.id ?? null, status: "success", ipAddress: ip }).catch(() => { });
 
   if (deviceId && user) {
-    const regResult = await registerDeviceAndSession(deviceId, user, supabase);
+    const regResult = await registerDeviceAndSession(deviceId, hardwareFingerprint, hardwareHash, user, supabase);
     if (!regResult.ok) return regResult;
   }
 

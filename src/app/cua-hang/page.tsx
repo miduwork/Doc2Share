@@ -179,7 +179,7 @@ export default async function TaiLieuPage({
 
   const docList = docs ?? [];
   const featuredDocs = docList.slice(0, 3);
-  const remainingDocs = docList.slice(3);
+  const allDocs = docList;
   const activeFilterChips = buildActiveFilterChips(params, categories ?? []);
   const clearAllHref = buildDocumentsListHref("/cua-hang", { sort }, { page: 1 });
   const activeFilterCount = activeFilterChips.length;
@@ -235,7 +235,7 @@ export default async function TaiLieuPage({
               {keywordMeta}
             </p>
             <div className="premium-panel flex flex-1 flex-wrap items-center justify-end gap-2.5 px-3 py-2.5 text-sm">
-              <form action="/cua-hang" method="get" className="flex w-full max-w-md items-center gap-2">
+              <form action="/cua-hang" method="get" className="flex min-w-[280px] flex-1 items-center gap-2">
                 {params.grade ? <input type="hidden" name="grade" value={params.grade} /> : null}
                 {params.subject ? <input type="hidden" name="subject" value={params.subject} /> : null}
                 {params.exam ? <input type="hidden" name="exam" value={params.exam} /> : null}
@@ -317,11 +317,11 @@ export default async function TaiLieuPage({
               </div>
             </div>
           )}
-          {remainingDocs.length > 0 && (
+          {allDocs.length > 0 && (
             <>
               <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Tất cả tài liệu</h2>
               <div className="flex flex-col gap-3">
-                {remainingDocs.map((doc) => (
+                {allDocs.map((doc) => (
                   <DocumentListCard
                     key={doc.id}
                     doc={doc}

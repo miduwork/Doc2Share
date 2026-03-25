@@ -7,10 +7,11 @@ type Props = {
   value: string;
   sub: string;
   tooltip?: string;
+  href?: string;
 };
 
-export default function KpiCard({ icon, label, value, sub, tooltip }: Props) {
-  return (
+export default function KpiCard({ icon, label, value, sub, tooltip, href }: Props) {
+  const card = (
     <article className="premium-card rounded-xl p-3">
       <div className="mb-1 flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
         {icon}
@@ -24,5 +25,12 @@ export default function KpiCard({ icon, label, value, sub, tooltip }: Props) {
       <p className="text-lg font-bold text-semantic-heading">{value}</p>
       <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{sub}</p>
     </article>
+  );
+
+  if (!href) return card;
+  return (
+    <a href={href} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
+      {card}
+    </a>
   );
 }

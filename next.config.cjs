@@ -6,6 +6,10 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    // Kept for any static imports of @napi-rs/canvas; rasterizer uses webpackIgnore dynamic import for .node.
+    serverComponentsExternalPackages: ["@napi-rs/canvas"],
+  },
   async redirects() {
     return [
       { source: "/tai-lieu", destination: "/cua-hang", permanent: true },

@@ -31,8 +31,13 @@ export function useLogout() {
         console.warn("logout cleanup failed:", serverResult.value.error);
       }
 
-      if (redirectTo) router.replace(redirectTo);
-      if (refresh || redirectTo) router.refresh();
+      // Full navigation (not client router only): avoids leaving a protected route's
+      // RSC-rendered body visible after auth clears (header updates from Supabase listener first).
+      if (redirectTo) {
+        window.location.replace(redirectTo);
+        return;
+      }
+      if (refresh) router.refresh();
     } finally {
       setLoading(false);
     }

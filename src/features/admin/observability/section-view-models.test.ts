@@ -33,6 +33,7 @@ test("buildObservabilitySectionViewModels maps section contracts with minimal pr
 
   const mapped = buildObservabilitySectionViewModels({
     metrics,
+    watermarkDegraded24h: 4,
     pipelineQueued: 7,
     pipelineProcessing: 2,
     pipelineFailed: 1,
@@ -72,6 +73,7 @@ test("buildObservabilitySectionViewModels maps section contracts with minimal pr
   });
 
   assert.equal(mapped.kpi.pipeline.queued, 7);
+  assert.equal(mapped.kpi.watermarkDegraded24h, 4);
   assert.equal(mapped.kpi.pipeline.processing, 2);
   assert.equal(mapped.kpi.pipeline.failed, 1);
   assert.equal(mapped.alerts.alertEvents.length, 1);

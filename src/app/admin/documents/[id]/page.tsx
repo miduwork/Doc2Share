@@ -40,7 +40,7 @@ export default async function AdminDocumentDetailPage({
 
   const categoryIds = [doc.subject_id, doc.grade_id, doc.exam_id].filter(Boolean) as number[];
   const { data: categories } = categoryIds.length
-    ? await supabase.from("categories").select("id, name, type").in("id", categoryIds)
+    ? await supabase.from("categories").select("id, name, type, position").in("id", categoryIds)
     : { data: [] as Array<{ id: number; name: string; type: string }> };
 
   const { data: versionsRaw } = await supabase

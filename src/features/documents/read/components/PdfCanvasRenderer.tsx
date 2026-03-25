@@ -3,32 +3,56 @@
 import { useEffect, useRef } from "react";
 import type { MutableRefObject } from "react";
 import type { PDFDocumentProxy } from "@/features/documents/read/pdfTypes";
+import type { WatermarkDisplayPayload } from "@/lib/watermark/watermark-contract";
+import { toIssuedAtBucketLabel } from "@/lib/watermark/watermark-contract";
+import { buildWatermarkGrid, getAdaptiveWatermarkPaint } from "@/lib/watermark/watermark-overlay";
 
-function Watermark({ userEmail }: { userEmail: string }) {
+function Watermark({
+  watermark,
+  canvasRef,
+}: {
+  watermark: WatermarkDisplayPayload | null;
+  canvasRef: MutableRefObject<HTMLCanvasElement | null>;
+}) {
+  const points = watermark ? buildWatermarkGrid(watermark, 10) : [];
+  const bucketLabel = watermark ? toIssuedAtBucketLabel(watermark.wmIssuedAtBucket) : "--:--";
+  const paintRef = useRef(getAdaptiveWatermarkPaint(0.75));
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+
+    try {
+      const sampleX = Math.max(0, Math.floor(canvas.width * 0.5));
+      const sampleY = Math.max(0, Math.floor(canvas.height * 0.5));
+      const pixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
+      const luma = (0.2126 * pixel[0] + 0.7152 * pixel[1] + 0.0722 * pixel[2]) / 255;
+      paintRef.current = getAdaptiveWatermarkPaint(luma);
+    } catch {
+      paintRef.current = getAdaptiveWatermarkPaint(0.75);
+    }
+  }, [canvasRef, watermark?.wmShort, watermark?.wmIssuedAtBucket]);
+
+  if (!watermark) return null;
+
   return (
     <div className="reader-watermark-doc absolute inset-0 z-20 overflow-hidden pointer-events-none select-none" aria-hidden>
-      {[
-        [15, 20],
-        [50, 15],
-        [85, 25],
-        [10, 50],
-        [50, 50],
-        [90, 48],
-        [18, 78],
-        [52, 82],
-        [88, 75],
-      ].map(([x, y], i) => (
+      {points.map((point, i) => (
         <div
           key={i}
-          className="absolute text-base font-semibold text-slate-500 whitespace-nowrap"
+          className="absolute whitespace-nowrap"
           style={{
-            left: `${x}%`,
-            top: `${y}%`,
-            transform: "translate(-50%, -50%) rotate(-25deg)",
-            opacity: 0.28,
+            left: `${point.xPercent}%`,
+            top: `${point.yPercent}%`,
+            transform: `translate(-50%, -50%) rotate(${point.rotationDeg}deg)`,
+            opacity: paintRef.current.opacity,
+            color: paintRef.current.color,
           }}
         >
-          {userEmail} · Doc2Share
+          <div className="text-sm font-semibold tracking-wide">D2S:{watermark.wmShort}</div>
+          <div className="text-xs font-medium">DOC:{watermark.wmDocShort} T:{bucketLabel}</div>
         </div>
       ))}
     </div>
@@ -41,14 +65,14 @@ export default function PdfCanvasRenderer({
   currentPage,
   scale,
   pagesPerView,
-  userEmail,
+  watermark,
 }: {
   pdfDoc: PDFDocumentProxy;
   numPages: number;
   currentPage: number;
   scale: number;
   pagesPerView: 1 | 2;
-  userEmail: string;
+  watermark: WatermarkDisplayPayload | null;
 }) {
   const canvasRef1 = useRef<HTMLCanvasElement>(null);
   const canvasRef2 = useRef<HTMLCanvasElement>(null);
@@ -136,13 +160,13 @@ export default function PdfCanvasRenderer({
       <div className={pagesPerView === 2 ? "flex flex-wrap justify-center gap-4 items-start" : "relative inline-block"}>
         <div className="relative inline-block">
           <canvas ref={canvasRef1} className="bg-white shadow-lg block" />
-          <Watermark userEmail={userEmail} />
+          <Watermark watermark={watermark} canvasRef={canvasRef1} />
         </div>
 
         {pagesPerView === 2 && currentPage + 1 <= numPages && (
           <div className="relative inline-block">
             <canvas ref={canvasRef2} className="bg-white shadow-lg block" />
-            <Watermark userEmail={userEmail} />
+            <Watermark watermark={watermark} canvasRef={canvasRef2} />
           </div>
         )}
       </div>

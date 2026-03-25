@@ -37,7 +37,15 @@ export default async function AdminLayout({
           <AdminNav adminRole={profile?.admin_role ?? "support_agent"} mode="inline" />
         </div>
         <div className="admin-content mx-auto min-h-full max-w-6xl px-3 py-4 sm:px-5 lg:px-6">
-          <AdminBreadcrumb />
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <AdminBreadcrumb />
+            <Link
+              href="/"
+              className="inline-flex items-center rounded-md border border-line bg-white px-3 py-1.5 text-xs font-medium text-semantic-heading transition hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
+            >
+              Về trang chủ
+            </Link>
+          </div>
           {children}
         </div>
       </main>

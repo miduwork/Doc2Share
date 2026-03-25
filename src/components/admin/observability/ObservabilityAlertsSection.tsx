@@ -64,7 +64,7 @@ export default function ObservabilityAlertsSection({ viewModel }: Props) {
           <a
             href={`/admin/observability?${toQueryString({
               ...baseFilters,
-              preset: "secure-link-blocked",
+              preset: "secure-document-access-blocked",
               window: "24h",
               severity: "all",
               source: "edge.get_secure_link",
@@ -74,7 +74,7 @@ export default function ObservabilityAlertsSection({ viewModel }: Props) {
             })}#alerts-panel`}
             className="btn-secondary px-3 py-1.5 text-xs"
           >
-            Preset: Secure-link blocked
+            Preset: Secure document blocked
           </a>
           <a
             href={`/admin/observability?${toQueryString({
@@ -83,13 +83,28 @@ export default function ObservabilityAlertsSection({ viewModel }: Props) {
               window: "24h",
               severity: "all",
               source: "db.document_lifecycle",
-              event_type: "all",
+              event_type: "pipeline_tick",
               alerts_cursor: "",
               alerts_dir: "next",
             })}#alerts-panel`}
             className="btn-secondary px-3 py-1.5 text-xs"
           >
             Preset: Pipeline
+          </a>
+          <a
+            href={`/admin/observability?${toQueryString({
+              ...baseFilters,
+              preset: "reader-watermark-degraded",
+              window: "24h",
+              severity: "warn",
+              source: "next.reader",
+              event_type: "watermark_degraded_fallback",
+              alerts_cursor: "",
+              alerts_dir: "next",
+            })}#alerts-panel`}
+            className="btn-secondary px-3 py-1.5 text-xs"
+          >
+            Preset: Watermark degraded
           </a>
         </div>
         <form className="mb-3 flex flex-wrap items-end gap-2" method="get">

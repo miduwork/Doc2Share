@@ -1,5 +1,6 @@
 import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import type { WatermarkForensicPayload } from "@/lib/watermark/watermark-contract";
 
 const ACTION_SECURE_PDF = "secure_pdf";
 export const ACTION_LOGIN_ATTEMPT = "login_attempt";
@@ -14,7 +15,28 @@ export type AccessLogParams = {
   requestId?: string;
   correlationId?: string;
   latencyMs?: number;
+  watermark?: WatermarkForensicPayload;
 };
+
+export function buildAccessLogMetadata(params: AccessLogParams): Record<string, unknown> {
+  return {
+    ...(params.reason ? { reason: params.reason } : {}),
+    ...(params.requestId ? { request_id: params.requestId } : {}),
+    ...((params.correlationId ?? params.requestId)
+      ? { correlation_id: params.correlationId ?? params.requestId }
+      : {}),
+    ...(params.latencyMs != null ? { latency_ms: params.latencyMs } : {}),
+    ...(params.watermark
+      ? {
+          wm_id: params.watermark.wmId,
+          wm_short: params.watermark.wmShort,
+          wm_issued_at_bucket: params.watermark.wmIssuedAtBucket,
+          wm_version: params.watermark.wmVersion,
+          wm_doc_short: params.watermark.wmDocShort,
+        }
+      : {}),
+  };
+}
 
 /**
  * Ghi audit log truy cập tài liệu (access_logs). Dùng service role để insert.
@@ -31,14 +53,7 @@ export async function logSecurePdfAccess(params: AccessLogParams): Promise<void>
       ip_address: params.ipAddress,
       device_id: params.deviceId ?? null,
       correlation_id: params.correlationId ?? params.requestId ?? null,
-      metadata: {
-        ...(params.reason ? { reason: params.reason } : {}),
-        ...(params.requestId ? { request_id: params.requestId } : {}),
-        ...((params.correlationId ?? params.requestId)
-          ? { correlation_id: params.correlationId ?? params.requestId }
-          : {}),
-        ...(params.latencyMs != null ? { latency_ms: params.latencyMs } : {}),
-      },
+      metadata: buildAccessLogMetadata(params),
     });
   } catch (e) {
     console.error("access-log: insert failed", e);

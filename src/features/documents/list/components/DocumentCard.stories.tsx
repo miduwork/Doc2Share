@@ -4,9 +4,9 @@ import type { Category } from "@/lib/types";
 import type { DocumentCardDoc } from "./document-card-types";
 
 const mockCategories: Category[] = [
-    { id: 12, name: "Lớp 12", type: "grade" },
-    { id: 1, name: "Toán học", type: "subject" },
-    { id: 1, name: "THPT Quốc Gia", type: "exam" },
+    { id: 12, name: "Lớp 12", type: "grade", position: 12 },
+    { id: 1, name: "Toán học", type: "subject", position: 1 },
+    { id: 1, name: "THPT Quốc Gia", type: "exam", position: 1 },
 ];
 
 const mockDoc: DocumentCardDoc = {

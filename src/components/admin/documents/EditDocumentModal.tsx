@@ -160,6 +160,16 @@ export default function EditDocumentModal({ editForm, setEditForm, onClose, onSa
             />
             <span id="edit-doc-downloadable-desc">Cho phép tải/in</span>
           </label>
+          <label className="sm:col-span-2 flex items-center gap-2 text-sm text-amber-600 font-medium">
+            <input
+              id="edit-doc-high-value"
+              type="checkbox"
+              checked={editForm.is_high_value}
+              onChange={(e) => setEditForm((prev) => (prev ? { ...prev, is_high_value: e.target.checked } : prev))}
+              aria-describedby="edit-doc-high-value-desc"
+            />
+            <span id="edit-doc-high-value-desc">Tài liệu nhạy cảm (High-Value SSW)</span>
+          </label>
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={handleClose}>Hủy</button>

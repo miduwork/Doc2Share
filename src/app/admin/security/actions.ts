@@ -118,9 +118,9 @@ export async function reviewSecurityIncident(params: {
 
 export async function reviewSecurityIncidentWithDeps(
   params: {
-  incidentId: string;
-  reviewStatus: "pending" | "confirmed_risk" | "false_positive";
-  notes?: string;
+    incidentId: string;
+    reviewStatus: "pending" | "confirmed_risk" | "false_positive";
+    notes?: string;
   },
   deps: {
     ensureSuperAdmin: typeof ensureSuperAdmin;
@@ -147,3 +147,34 @@ export async function reviewSecurityIncidentWithDeps(
   return ok();
 }
 
+export async function forensicLookup(params: {
+  wmShort: string;
+  documentId?: string;
+}): Promise<ActionResult<any[]>> {
+  const auth = await ensureSuperAdmin();
+  if (!auth.ok) return auth;
+
+  const supabase = await createClient();
+  let query = supabase
+    .from("access_logs")
+    .select(`
+      id,
+      created_at,
+      ip_address,
+      device_id,
+      metadata,
+      profiles:user_id (id, full_name, role),
+      documents:document_id (id, title)
+    `)
+    .eq("status", "success")
+    .filter("metadata->>wm_short", "eq", params.wmShort)
+    .order("created_at", { ascending: false });
+
+  if (params.documentId) {
+    query = query.eq("document_id", params.documentId);
+  }
+
+  const { data, error } = await query;
+  if (error) return fail(error.message);
+  return ok(data ?? []);
+}

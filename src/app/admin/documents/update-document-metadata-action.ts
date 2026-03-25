@@ -21,6 +21,7 @@ export async function updateDocumentMetadata(
     grade_id?: number | null;
     exam_id?: number | null;
     is_downloadable?: boolean | null;
+    is_high_value?: boolean | null;
     status?: "draft" | "processing" | "ready" | "failed" | "archived" | "deleted" | null;
   },
   deps?: Partial<DocumentsActionDeps>
@@ -45,6 +46,7 @@ export async function updateDocumentMetadata(
       gradeId: input.grade_id ?? null,
       examId: input.exam_id ?? null,
       isDownloadable: input.is_downloadable ?? null,
+      isHighValue: input.is_high_value ?? null,
       status: input.status ?? null,
     });
     if (!result.updated) return fail("Không tìm thấy tài liệu để cập nhật.");

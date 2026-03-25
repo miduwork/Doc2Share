@@ -1,7 +1,8 @@
 export const OBSERVABILITY_PRESETS = [
   "incident",
   "webhook-errors",
-  "secure-link-blocked",
+  "secure-document-access-blocked",
+  "reader-watermark-degraded",
   "document-pipeline",
   "custom",
 ] as const;
@@ -12,6 +13,7 @@ export const OBSERVABILITY_DIRECTIONS = ["next", "prev"] as const;
 
 export const OBSERVABILITY_SOURCE_OPTIONS = [
   "all",
+  "next.reader",
   "db.alerts",
   "db.document_lifecycle",
   "db.maintenance",
@@ -95,8 +97,14 @@ type ObservabilityPresetDefaults = Pick<
 export const PRESET_DEFAULTS_MAP: Record<ObservabilityPreset, ObservabilityPresetDefaults> = {
   incident: { window: "24h", severity: "error", source: "all", eventType: "all" },
   "webhook-errors": { window: "24h", severity: "error", source: "edge.payment_webhook", eventType: "all" },
-  "secure-link-blocked": { window: "24h", severity: "all", source: "edge.get_secure_link", eventType: "blocked" },
-  "document-pipeline": { window: "24h", severity: "all", source: "db.document_lifecycle", eventType: "all" },
+  "secure-document-access-blocked": { window: "24h", severity: "all", source: "edge.get_secure_link", eventType: "blocked" },
+  "reader-watermark-degraded": {
+    window: "24h",
+    severity: "warn",
+    source: "next.reader",
+    eventType: "watermark_degraded_fallback",
+  },
+  "document-pipeline": { window: "24h", severity: "all", source: "db.document_lifecycle", eventType: "pipeline_tick" },
   custom: { window: "24h", severity: "all", source: "all", eventType: "all" },
 };
 
@@ -121,6 +129,7 @@ export function isObservabilityDirection(value: string): value is ObservabilityD
 }
 
 export function resolveObservabilityPreset(value: string): ObservabilityPreset {
+  if (value === "secure-link-blocked") return "secure-document-access-blocked";
   return isObservabilityPreset(value) ? value : DEFAULT_OBSERVABILITY_FILTERS.preset;
 }
 

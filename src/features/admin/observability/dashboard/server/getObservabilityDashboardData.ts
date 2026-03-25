@@ -49,6 +49,7 @@ type ParsedObservabilityFilters = {
 
 type FetchedObservabilityRows = {
   metrics: MetricRow | null;
+  watermarkDegraded24h: number;
   capacityRows: CapacityRow[];
   runs: MaintenanceRow[];
   runsTotal: number;
@@ -107,6 +108,7 @@ async function fetchObservabilityDashboardRows(
 ): Promise<FetchedObservabilityRows> {
   const [
     metricsRes,
+    watermarkDegradedRes,
     capacityRes,
     runsRes,
     alertsCursorRes,
@@ -116,6 +118,12 @@ async function fetchObservabilityDashboardRows(
     pipelineFailedRes,
   ] = await Promise.all([
     supabase.from("observability_metrics_24h").select("*").limit(1).maybeSingle(),
+    supabase
+      .from("observability_events")
+      .select("id", { count: "exact", head: true })
+      .eq("source", "next.reader")
+      .eq("event_type", "watermark_degraded_fallback")
+      .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
     supabase.from("backend_capacity_overview").select("*"),
     supabase
       .from("backend_maintenance_runs")
@@ -144,6 +152,7 @@ async function fetchObservabilityDashboardRows(
   const pipelineQueued = pipelineQueuedRes.count ?? 0;
   const pipelineProcessing = pipelineProcessingRes.count ?? 0;
   const pipelineFailed = pipelineFailedRes.count ?? 0;
+  const watermarkDegraded24h = watermarkDegradedRes.count ?? 0;
   const metrics = (metricsRes.data as MetricRow | null) ?? null;
   const capacityRows = (capacityRes.data as CapacityRow[] | null) ?? [];
   const runs = (runsRes.data as MaintenanceRow[] | null) ?? [];
@@ -159,6 +168,7 @@ async function fetchObservabilityDashboardRows(
 
   return {
     metrics,
+    watermarkDegraded24h,
     capacityRows,
     runs,
     runsTotal,
@@ -254,6 +264,7 @@ function assembleObservabilityPageData(
 
   const sections = buildObservabilitySectionViewModels({
     metrics: rows.metrics,
+    watermarkDegraded24h: rows.watermarkDegraded24h,
     pipelineQueued: rows.pipelineQueued,
     pipelineProcessing: rows.pipelineProcessing,
     pipelineFailed: rows.pipelineFailed,

@@ -8,7 +8,13 @@ import { formatDate } from "@/lib/date";
 import { getFriendlyDeviceName } from "@/lib/deviceName";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { updateUserRole, grantDocumentPermission, type ProfileRole, type AdminRole } from "@/app/admin/users/actions";
+import {
+  clearUserSecurityLock,
+  updateUserRole,
+  grantDocumentPermission,
+  type ProfileRole,
+  type AdminRole,
+} from "@/app/admin/users/actions";
 
 interface Profile {
   id: string;
@@ -16,6 +22,9 @@ interface Profile {
   role: string;
   admin_role: string | null;
   is_active: boolean;
+  is_locked: boolean;
+  lock_reason: string | null;
+  risk_score: number | null;
   created_at: string;
 }
 interface Order { id: string; total_amount: number; status: string; created_at: string }
@@ -45,6 +54,7 @@ export default function AdminUserDetailClient({
     (profile.role === "admin" && profile.admin_role ? profile.admin_role : "") as AdminRole | ""
   );
   const [savingRoles, setSavingRoles] = useState(false);
+  const [unlockingSecurity, setUnlockingSecurity] = useState(false);
   const supabase = createClient();
   const router = useRouter();
   const totalRevenue = orders.filter((o) => o.status === "completed").reduce((s, o) => s + o.total_amount, 0);
@@ -86,6 +96,18 @@ export default function AdminUserDetailClient({
     }
   }
 
+  async function unlockSecurity() {
+    setUnlockingSecurity(true);
+    const result = await clearUserSecurityLock(profile.id);
+    setUnlockingSecurity(false);
+    if (result.ok) {
+      toast.success("Đã mở khóa bảo mật.");
+      router.refresh();
+    } else {
+      toast.error(result.error);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">
@@ -105,8 +127,27 @@ export default function AdminUserDetailClient({
           <span className={profile.is_active ? "rounded-full bg-green-100 px-3 py-1 text-sm text-green-800 dark:bg-green-900/30" : "rounded-full bg-red-100 px-3 py-1 text-sm text-red-800 dark:bg-red-900/30"}>
             {profile.is_active ? "Hoạt động" : "Khóa"}
           </span>
+          {profile.is_locked ? (
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-200" title={profile.lock_reason ?? ""}>
+              Khóa bảo mật (đọc PDF){profile.risk_score != null ? ` · risk ${Number(profile.risk_score).toFixed(1)}` : ""}
+            </span>
+          ) : null}
           <span className="text-sm text-slate-500">Đăng ký: {formatDate(profile.created_at)}</span>
         </div>
+        {profile.is_locked ? (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+            <p className="font-medium">Tài khoản đang bị khóa bảo mật — không đọc được tài liệu đã mua (API secure-pdf).</p>
+            {profile.lock_reason ? <p className="mt-1 opacity-90">{profile.lock_reason}</p> : null}
+            <button
+              type="button"
+              onClick={unlockSecurity}
+              disabled={unlockingSecurity}
+              className="mt-2 rounded-md bg-amber-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-900 disabled:opacity-60 dark:bg-amber-700 dark:hover:bg-amber-600"
+            >
+              {unlockingSecurity ? "Đang xử lý…" : "Mở khóa bảo mật"}
+            </button>
+          </div>
+        ) : null}
         {canEditRoles && (
           <section className="mt-6 rounded-2xl border border-line bg-surface-muted p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-semantic-heading">

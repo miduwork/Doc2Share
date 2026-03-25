@@ -16,7 +16,7 @@ export async function getProductPageData({ id }: { id: string }): Promise<Produc
 
   if (error || !doc) notFound();
 
-  const { data: categories } = await supabase.from("categories").select("id, name, type");
+  const { data: categories } = await supabase.from("categories").select("id, name, type, position");
   const subject = categories?.find((c) => c.id === doc.subject_id) ?? null;
   const grade = categories?.find((c) => c.id === doc.grade_id) ?? null;
   const exam = categories?.find((c) => c.id === doc.exam_id) ?? null;

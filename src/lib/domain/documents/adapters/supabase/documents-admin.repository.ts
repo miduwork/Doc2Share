@@ -28,6 +28,7 @@ export function createSupabaseDocumentsAdminRepository(): DocumentsAdminReposito
         p_grade_id: input.gradeId ?? null,
         p_exam_id: input.examId ?? null,
         p_is_downloadable: input.isDownloadable ?? null,
+        p_is_high_value: input.isHighValue ?? null,
         p_status: input.status ?? null,
       });
       if (error) throw new Error(error.message);

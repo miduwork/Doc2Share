@@ -35,8 +35,9 @@ export default async function TuSachPage() {
 
   const { data: categoriesRaw } = await supabase
     .from("categories")
-    .select("id, name, type")
+    .select("id, name, type, position")
     .order("type")
+    .order("position", { ascending: true })
     .order("name");
 
   const categories = categoriesRaw ?? [];

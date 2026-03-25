@@ -41,7 +41,10 @@ test("evaluatePageSessionBinding: fail with session_replaced when cookie exists 
 });
 
 test("toSessionBindingErrorMessage maps known reasons", () => {
-  assert.match(toSessionBindingErrorMessage("no_active_session"), /Phiên chưa được đăng ký/);
+  assert.match(
+    toSessionBindingErrorMessage("no_active_session"),
+    /Không tìm thấy thiết bị hợp lệ/
+  );
   assert.match(toSessionBindingErrorMessage("device_mismatch"), /thiết bị khác/);
   assert.match(toSessionBindingErrorMessage("session_replaced"), /được thay thế/);
 });

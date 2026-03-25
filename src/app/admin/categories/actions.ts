@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import type { CategoryType } from "@/lib/types";
 import { ok, fail, type ActionResult } from "@/lib/action-result";
 
-export type CategoryRow = { id: number; name: string; type: string; created_at?: string };
+export type CategoryRow = { id: number; name: string; type: string; position: number; created_at?: string };
 
 export async function createCategory(name: string, type: CategoryType): Promise<ActionResult<CategoryRow>> {
   const guard = await requireDocumentManagerContext();
@@ -17,7 +17,7 @@ export async function createCategory(name: string, type: CategoryType): Promise<
   const { data, error } = await supabase
     .from("categories")
     .insert({ name: trimmed, type })
-    .select("id, name, type, created_at")
+    .select("id, name, type, position, created_at")
     .single();
   if (error) return fail(error.message);
   revalidatePath("/admin/categories");
@@ -37,7 +37,7 @@ export async function updateCategory(id: number, name: string): Promise<ActionRe
     .from("categories")
     .update({ name: trimmed })
     .eq("id", id)
-    .select("id, name, type, created_at")
+    .select("id, name, type, position, created_at")
     .single();
   if (error) return fail(error.message);
   revalidatePath("/admin/categories");

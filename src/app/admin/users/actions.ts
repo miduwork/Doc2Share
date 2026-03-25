@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { requireSuperAdminContext, requireDocumentManagerContext } from "@/lib/admin/guards";
+import { requireSuperAdminContext, requireDocumentManagerContext, requireUserManagerContext } from "@/lib/admin/guards";
 import { revalidatePath } from "next/cache";
 import { ok, fail, type ActionResult } from "@/lib/action-result";
 import type { AdminRole, ProfileRole } from "@/lib/types";
@@ -67,4 +67,41 @@ export async function grantDocumentPermission(
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${trimmedUserId}`);
   return ok();
+}
+
+/** Gỡ khóa bảo mật (is_locked) — không đổi is_active. Dùng khi risk engine khóa nhưng cần mở lại đọc tài liệu. */
+export async function clearUserSecurityLock(userId: string): Promise<ActionResult<void>> {
+  const guard = await requireUserManagerContext();
+  if (!guard.ok) return fail(guard.error);
+
+  const trimmed = userId?.trim();
+  if (!trimmed) return fail("User ID không hợp lệ.");
+
+  const service = createServiceRoleClient();
+  const { error } = await service
+    .from("profiles")
+    .update({
+      is_locked: false,
+      lock_reason: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", trimmed);
+
+  if (error) return fail(error.message);
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${trimmed}`);
+  return ok();
+}
+
+/** Tạo dòng profiles thiếu cho mọi user trong auth.users (cần migration fn_backfill_missing_profiles). */
+export async function backfillMissingProfilesFromAuth(): Promise<ActionResult<{ inserted: number }>> {
+  const guard = await requireUserManagerContext();
+  if (!guard.ok) return fail(guard.error);
+
+  const service = createServiceRoleClient();
+  const { data, error } = await service.rpc("backfill_missing_profiles");
+  if (error) return fail(error.message);
+  const inserted = typeof data === "number" ? data : Number(data ?? 0);
+  revalidatePath("/admin/users");
+  return ok({ inserted: Number.isFinite(inserted) ? inserted : 0 });
 }

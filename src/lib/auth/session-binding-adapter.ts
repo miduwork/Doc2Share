@@ -39,7 +39,7 @@ export function evaluatePageSessionBinding(
 
 export function toSessionBindingErrorMessage(reason: SessionBindingReason): string {
   if (reason === "no_active_session") {
-    return "Phiên chưa được đăng ký. Vui lòng vào Tủ sách rồi mở Đọc.";
+    return "Không tìm thấy thiết bị hợp lệ. Tự động phục hồi thất bại. Vui lòng đăng nhập lại.";
   }
   if (reason === "device_mismatch") {
     return "Phiên đăng nhập đang được sử dụng trên thiết bị khác. Vui lòng đăng xuất trên thiết bị kia hoặc đăng nhập lại trên thiết bị này.";

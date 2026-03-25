@@ -23,6 +23,7 @@ export type UpdateDocumentAdminInput = {
   gradeId?: number | null;
   examId?: number | null;
   isDownloadable?: boolean | null;
+  isHighValue?: boolean | null;
   status?: "draft" | "processing" | "ready" | "failed" | "archived" | "deleted" | null;
 };
 

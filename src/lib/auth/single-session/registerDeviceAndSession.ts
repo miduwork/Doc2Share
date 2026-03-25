@@ -18,9 +18,11 @@ function getClientIp(hd: Headers): string {
  */
 export async function registerDeviceAndSession(
   deviceId: string,
+  hardwareFingerprint?: any,
+  hardwareHash?: string,
   existingUser?: { id: string } | null,
   existingSupabaseClient?: any
-): Promise<ActionResult<void>> {
+): Promise<ActionResult<{ recoveredDeviceId?: string }>> {
   const supabase = existingSupabaseClient || (await createClient());
   let user = existingUser;
   if (!user) {
@@ -50,28 +52,43 @@ export async function registerDeviceAndSession(
 
   const { data: devices } = await supabase
     .from("device_logs")
-    .select("device_id")
+    .select("device_id, hardware_hash")
     .eq("user_id", user.id);
 
-  const existingDeviceIds = (devices ?? []).map((d: { device_id: string }) => d.device_id);
   const devicePolicy = evaluateRegisterDevicePolicy({
     isSuperAdmin,
-    existingDeviceIds,
+    existingDevices: devices ?? [],
     currentDeviceId: deviceId,
+    currentHardwareHash: hardwareHash,
   });
   if (!devicePolicy.ok) return fail(devicePolicy.error);
+
   const isNewDevice = devicePolicy.isNewDevice;
+  const recoveredDeviceId = devicePolicy.recoveredDeviceId;
+  const effectiveDeviceId = recoveredDeviceId || deviceId;
 
   if (isNewDevice) {
     await supabase.from("device_logs").upsert(
       {
         user_id: user.id,
-        device_id: deviceId,
-        device_info: {},
+        device_id: effectiveDeviceId,
+        device_info: { userAgent, clientIp },
+        hardware_fingerprint: hardwareFingerprint || null,
+        hardware_hash: hardwareHash || null,
         last_login: new Date().toISOString(),
       },
       { onConflict: "user_id,device_id" }
     );
+  } else if (hardwareHash) {
+    // Luôn cập nhật fingerprint kể cả thiết bị cũ để sync dữ liệu phần cứng mới nhất
+    await supabase.from("device_logs")
+      .update({
+        hardware_fingerprint: hardwareFingerprint || null,
+        hardware_hash: hardwareHash || null,
+        last_login: new Date().toISOString(),
+      })
+      .eq("user_id", user.id)
+      .eq("device_id", effectiveDeviceId);
   }
 
   const { data: oldSessions } = await supabase
@@ -89,11 +106,29 @@ export async function registerDeviceAndSession(
       event_type: "ip_change",
       severity: "medium",
       ip_address: clientIp,
-      device_id: deviceId,
+      device_id: effectiveDeviceId,
       metadata: { reason: "ip_shifting_30min", other_ips: otherIps.slice(0, 5) },
     });
   }
 
+  // Idempotent session handling: only replace session when the device actually changes.
+  // Previously, this unconditionally deleted ALL sessions and inserted a new one on every
+  // doc open — breaking multi-tab usage and causing retry domino effects.
+  const { data: existingSession } = await supabase
+    .from("active_sessions")
+    .select("session_id, device_id")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingSession?.device_id === effectiveDeviceId) {
+    // Same device already has an active session — reuse it, no churn.
+    await setSessionCookieId(existingSession.session_id);
+    return ok({ recoveredDeviceId });
+  }
+
+  // Different device or no session at all — replace with a new session.
   const sessionId = crypto.randomUUID();
   const { error: delErr } = await supabase.from("active_sessions").delete().eq("user_id", user.id);
   if (delErr) {
@@ -105,7 +140,7 @@ export async function registerDeviceAndSession(
     user_id: user.id,
     ip_address: clientIp,
     user_agent: userAgent,
-    device_id: deviceId,
+    device_id: effectiveDeviceId,
   });
 
   if (insertErr) {
@@ -114,6 +149,6 @@ export async function registerDeviceAndSession(
   }
 
   await setSessionCookieId(sessionId);
-  return ok();
+  return ok({ recoveredDeviceId });
 }
 

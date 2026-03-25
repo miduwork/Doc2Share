@@ -107,6 +107,7 @@ export type ObservabilityHeaderViewModel = {
 
 export type KpiSectionViewModel = {
   metrics: MetricRow | null;
+  watermarkDegraded24h: number;
   pipeline: {
     queued: number;
     processing: number;

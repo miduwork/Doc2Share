@@ -11,9 +11,9 @@ export default async function AdminCategoriesPage() {
   const supabase = await createClient();
   const { data: categories } = await supabase
     .from("categories")
-    .select("id, name, type, created_at")
+    .select("id, name, type, position, created_at")
     .order("type")
-    .order("name");
+    .order("position", { ascending: true });
 
   return (
     <div>

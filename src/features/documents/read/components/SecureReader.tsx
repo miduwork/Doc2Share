@@ -1,25 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, ZoomIn, ZoomOut, List, StickyNote, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ZoomIn, ZoomOut, List, StickyNote, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import usePersistentDeviceId from "@/features/documents/read/hooks/usePersistentDeviceId";
 import usePdfFetchAndDecode from "@/features/documents/read/hooks/usePdfFetchAndDecode";
 import useReaderSecurityGuards from "@/features/documents/read/hooks/useReaderSecurityGuards";
 import PdfCanvasRenderer from "@/features/documents/read/components/PdfCanvasRenderer";
+import SecureImageRenderer from "@/features/documents/read/components/SecureImageRenderer";
+import { BehavioralTracker } from "@/lib/secure-access/behavioral/behavioral-tracker";
+import { toast } from "sonner";
 
 const DESKTOP_BREAKPOINT_PX = 768;
 
 function usePagesPerView(): 1 | 2 {
-  const [pagesPerView, setPagesPerView] = useState<1 | 2>(() =>
-    typeof window !== "undefined" && window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT_PX}px)`).matches ? 2 : 1
-  );
+  const [pagesPerView, setPagesPerView] = useState<1 | 2>(1);
 
   useEffect(() => {
     const mql = window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT_PX}px)`);
-    const handler = () => setPagesPerView(mql.matches ? 2 : 1);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
+    const sync = () => setPagesPerView(mql.matches ? 2 : 1);
+    sync();
+    mql.addEventListener("change", sync);
+    return () => mql.removeEventListener("change", sync);
   }, []);
 
   return pagesPerView;
@@ -28,31 +30,55 @@ function usePagesPerView(): 1 | 2 {
 export default function SecureReader({
   documentId,
   documentTitle,
-  userEmail,
 }: {
   documentId: string;
   documentTitle: string;
-  userEmail: string;
 }) {
   const router = useRouter();
 
   const pagesPerView = usePagesPerView();
-  const deviceId = usePersistentDeviceId();
+  const { deviceId, storageReady } = usePersistentDeviceId();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.2);
 
-  const { pdfDoc, numPages, loading, error, refetch } = usePdfFetchAndDecode({ documentId, deviceId });
-  const { contentHidden, mouseInView, setContentHidden } = useReaderSecurityGuards();
+  const { pdfDoc, rawPdfBlob, numPages, loading, error, watermark, watermarkDegraded, isHighValueDoc, isDownloadable, refetch } = usePdfFetchAndDecode({ documentId, deviceId });
+  const { contentHidden, setContentHidden } = useReaderSecurityGuards();
+
+  const trackerRef = useRef<BehavioralTracker | null>(null);
+
+  useEffect(() => {
+    if (documentId && deviceId && !trackerRef.current) {
+      trackerRef.current = new BehavioralTracker(documentId, deviceId);
+    }
+  }, [documentId, deviceId]);
+
+  const handlePageChange = useCallback((next: number) => {
+    setCurrentPage(next);
+    trackerRef.current?.trackPageFlip();
+  }, []);
 
   const handleRefetch = useCallback(async () => {
     setCurrentPage(1);
     await refetch();
   }, [refetch]);
 
+  const downloadFile = useCallback(() => {
+    if (!rawPdfBlob) return;
+    const url = URL.createObjectURL(rawPdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${documentTitle.replace(/[/\\?%*:|"<>]/g, "-")}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Đã bắt đầu tải tài liệu.");
+  }, [rawPdfBlob, documentTitle]);
+
   const close = () => router.push("/tu-sach");
 
-  if (loading) {
+  if (!storageReady || (deviceId && loading)) {
     return (
       <div className="reader-fullscreen flex items-center justify-center text-white">
         <p>Đang tải tài liệu...</p>
@@ -91,7 +117,7 @@ export default function SecureReader({
 
   return (
     <div className="reader-fullscreen flex flex-col select-none">
-      {/* Thanh công cụ: Phóng to / Thu nhỏ, Trang trước/sau, Đóng — không có Tải về / In */}
+      {/* Thanh công cụ: Phóng to / Thu nhỏ, Trang trước/sau, Tải về (nếu được phép), Đóng */}
       <div className="flex items-center justify-between border-b border-slate-600 bg-slate-800 px-4 py-2.5">
         <span className="truncate text-sm font-medium text-white">{documentTitle}</span>
         <div className="flex items-center gap-1">
@@ -140,6 +166,7 @@ export default function SecureReader({
           <span className="mx-1 h-6 w-px bg-slate-600" />
           <button
             type="button"
+            onClick={() => toast("Tính năng Mục lục đang được phát triển.")}
             className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-700 hover:text-slate-200"
             aria-label="Mục lục"
             title="Mục lục (sắp có)"
@@ -148,12 +175,27 @@ export default function SecureReader({
           </button>
           <button
             type="button"
+            onClick={() => toast("Tính năng Ghi chú cá nhân đang được phát triển.")}
             className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-700 hover:text-slate-200"
             aria-label="Ghi chú"
             title="Ghi chú (sắp có)"
           >
             <StickyNote className="h-5 w-5" />
           </button>
+          {isDownloadable && !isHighValueDoc && (
+            <>
+              <span className="mx-1 h-6 w-px bg-slate-600" />
+              <button
+                type="button"
+                onClick={downloadFile}
+                className="rounded-lg p-2 text-slate-300 transition hover:bg-slate-700 hover:text-white"
+                aria-label="Tải về"
+                title="Tải tài liệu PDF về máy"
+              >
+                <Download className="h-5 w-5" />
+              </button>
+            </>
+          )}
           <span className="mx-1 h-6 w-px bg-slate-600" />
           <button
             type="button"
@@ -178,21 +220,34 @@ export default function SecureReader({
             onKeyDown={(e) => e.key === "Enter" && document.visibilityState === "visible" && setContentHidden(false)}
             aria-label="Click để tiếp tục xem"
           >
-            <p className="text-center text-sm text-white/70">Nhấn vào đây để tiếp tục xem tài liệu</p>
+            <p className="text-center text-sm text-white/70">Tài liệu đang bị ẩn. Nhấn vào đây để tiếp tục xem.</p>
           </div>
         )}
 
-        {/* Đen hoàn toàn khi chuột ra khỏi viewport — không làm mờ, chụp màn hình chỉ thấy đen */}
-        {!mouseInView && <div className="absolute inset-0 z-10 bg-black" aria-hidden />}
+        {watermarkDegraded && process.env.NODE_ENV !== "production" && (
+          <div className="absolute right-3 top-3 z-20 rounded border border-amber-400/50 bg-amber-500/15 px-2 py-1 text-[11px] text-amber-200">
+            Watermark fallback mode
+          </div>
+        )}
 
-        {pdfDoc && (
+        {isHighValueDoc ? (
+          <SecureImageRenderer
+            documentId={documentId}
+            deviceId={deviceId}
+            numPages={numPages}
+            currentPage={currentPage}
+            scale={scale}
+            pagesPerView={pagesPerView}
+            watermark={watermark}
+          />
+        ) : pdfDoc && (
           <PdfCanvasRenderer
             pdfDoc={pdfDoc}
             numPages={numPages}
             currentPage={currentPage}
             scale={scale}
             pagesPerView={pagesPerView}
-            userEmail={userEmail}
+            watermark={watermark}
           />
         )}
       </div>

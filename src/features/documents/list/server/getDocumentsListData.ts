@@ -49,9 +49,9 @@ export async function getDocumentsListData(
 
   const { data: categories } = await supabase
     .from("categories")
-    .select("id, name, type")
+    .select("id, name, type, position")
     .order("type")
-    .order("name");
+    .order("position", { ascending: true });
 
   return { docs, categories, totalCount: count ?? 0 };
 }

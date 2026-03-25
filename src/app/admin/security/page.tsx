@@ -28,6 +28,7 @@ export default async function AdminSecurityPage({
     logs: "Nhật ký",
     geo: "Địa lý IP",
     benchmark: "Benchmark",
+    forensic: "Truy vết",
   };
 
   return (
@@ -41,11 +42,10 @@ export default async function AdminSecurityPage({
           <Link
             key={tab}
             href={`/admin/security?workspace=${tab}`}
-            className={`rounded px-3 py-1 text-xs ${
-              workspace === tab
+            className={`rounded px-3 py-1 text-xs ${workspace === tab
                 ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900"
                 : "border border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300"
-            }`}
+              }`}
           >
             {tabLabel[tab]}
           </Link>

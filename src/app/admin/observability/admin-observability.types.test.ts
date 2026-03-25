@@ -24,8 +24,13 @@ test("preset defaults are mapped correctly", () => {
   assert.equal(webhookErrors.severity, "error");
   assert.equal(webhookErrors.source, "edge.payment_webhook");
 
-  const secureLinkBlocked = getPresetDefaults("secure-link-blocked");
+  const secureLinkBlocked = getPresetDefaults("secure-document-access-blocked");
   assert.equal(secureLinkBlocked.eventType, "blocked");
+
+  const watermarkDegraded = getPresetDefaults("reader-watermark-degraded");
+  assert.equal(watermarkDegraded.severity, "warn");
+  assert.equal(watermarkDegraded.source, "next.reader");
+  assert.equal(watermarkDegraded.eventType, "watermark_degraded_fallback");
 });
 
 test("resolvers clamp unknown values to defaults", () => {

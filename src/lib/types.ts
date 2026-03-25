@@ -10,5 +10,6 @@ export interface Category {
   id: number;
   name: string;
   type: CategoryType;
+  position: number;
   created_at?: string;
 }

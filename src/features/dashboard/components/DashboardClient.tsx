@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState, useTransition, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { BookOpen, Filter, Search, X } from "lucide-react";
 import { formatDate } from "@/lib/date";
 import { registerDeviceAndSession } from "@/lib/auth/single-session/registerDeviceAndSession";
+import { collectHardwareFingerprint } from "@/lib/auth/fingerprint";
 import { toast } from "sonner";
 import type { Category } from "@/lib/types";
 import DiscoveryFilters from "@/features/documents/list/components/DiscoveryFilters";
@@ -72,16 +73,16 @@ export default function DashboardClient({
 
   const filteredLibrary = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let results = library ?? [];
+    let results: LibItem[] = library ?? [];
 
     if (q) {
-      results = results.filter((item) => (item.title ?? "").toLowerCase().includes(q));
+      results = results.filter((item: LibItem) => (item.title ?? "").toLowerCase().includes(q));
     }
-    if (gradeId) results = results.filter((item) => item.grade_id === gradeId);
-    if (subjectId) results = results.filter((item) => item.subject_id === subjectId);
-    if (examId) results = results.filter((item) => item.exam_id === examId);
+    if (gradeId) results = results.filter((item: LibItem) => item.grade_id === gradeId);
+    if (subjectId) results = results.filter((item: LibItem) => item.subject_id === subjectId);
+    if (examId) results = results.filter((item: LibItem) => item.exam_id === examId);
 
-    const normalizeTitle = (t: string) => t ?? "";
+    const normalizeTitle = (t: string | null | undefined) => t ?? "";
 
     const sorted = [...results];
     if (sort === "granted_asc") {
@@ -110,6 +111,24 @@ export default function DashboardClient({
     router.push(qs ? `/tu-sach?${qs}` : "/tu-sach");
   };
 
+  const syncSessionBinding = useCallback(async () => {
+    try {
+      const dId = getDeviceId();
+      const { signalsSummary, hardwareHash } = await collectHardwareFingerprint();
+      const res = await registerDeviceAndSession(dId, undefined, hardwareHash);
+
+      if (res.ok && res.data?.recoveredDeviceId) {
+        localStorage.setItem("doc2share_device_id", res.data.recoveredDeviceId);
+      }
+
+      if (!res.ok) {
+        console.error("Dashboard session binding failed:", res.error);
+      }
+    } catch (e) {
+      console.error("syncSessionBinding err", e);
+    }
+  }, []);
+
   useEffect(() => {
     if (registerAttemptedRef.current) return;
     registerAttemptedRef.current = true;
@@ -118,11 +137,10 @@ export default function DashboardClient({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      const deviceId = getDeviceId();
-      await registerDeviceAndSession(deviceId);
+      await syncSessionBinding();
       if (!hasSessionCookie) router.refresh();
     })();
-  }, [hasSessionCookie, supabase, router]);
+  }, [hasSessionCookie, supabase, router, syncSessionBinding]);
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -260,7 +278,7 @@ export default function DashboardClient({
                 </Link>
               </div>
             ) : (
-              filteredLibrary.map((item) => (
+              filteredLibrary.map((item: LibItem) => (
                 <div
                   key={item.id}
                   className="premium-card premium-card-hover flex items-center gap-4 p-4"

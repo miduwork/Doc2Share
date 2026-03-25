@@ -21,9 +21,36 @@ export async function POST(req: Request) {
     });
     if (!access.ok) return access.response;
 
+    // Phase 3: Zero-Vector Hardening
+    // Nếu là tài liệu nhạy cảm cao, chặn hoàn toàn việc tải PDF vector.
+    // Trả về headers để client biết cần chuyển sang chế độ SSW (Image Mode).
+    if (access.ctx.isHighValue) {
+      return NextResponse.json(
+        {
+          error: "Tài liệu này yêu cầu chế độ bảo vệ nâng cao (SSW).",
+          is_high_value: true,
+          num_pages: access.ctx.numPages,
+          is_downloadable: access.ctx.isDownloadable
+        },
+        {
+          status: 403,
+          headers: {
+            "X-D2S-Is-High-Value": "true",
+            "X-D2S-Num-Pages": String(access.ctx.numPages),
+            "X-D2S-Is-Downloadable": access.ctx.isDownloadable ? "true" : "false",
+          }
+        }
+      );
+    }
+
     const headers: Record<string, string> = {
       "Content-Type": "application/pdf",
       "Cache-Control": "private, no-store",
+      "X-D2S-WM-Short": access.ctx.watermark.wmShort,
+      "X-D2S-WM-Doc-Short": access.ctx.watermark.wmDocShort,
+      "X-D2S-WM-Issued-At-Bucket": access.ctx.watermark.wmIssuedAtBucket,
+      "X-D2S-WM-Version": access.ctx.watermark.wmVersion,
+      "X-D2S-Is-Downloadable": access.ctx.isDownloadable ? "true" : "false",
     };
 
     // Ưu tiên stream để giảm peak RAM và có thể cải thiện TTFB với PDF lớn.

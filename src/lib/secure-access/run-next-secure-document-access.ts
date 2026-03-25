@@ -12,7 +12,6 @@ import {
   computeIsSuperAdmin,
   evaluateDeviceGate,
   evaluateDocumentPermission,
-  isProfileActive,
   parsePositiveIntEnv,
   SECURE_ACCESS_DEFAULTS,
   wouldExceedHighFreqDistinctDocs,
@@ -22,6 +21,8 @@ import {
   evaluateApiSessionBinding,
   toSessionBindingErrorMessage,
 } from "@/lib/auth/session-binding-adapter";
+import { issueWatermark } from "@/lib/watermark/watermark-issuer";
+import type { WatermarkDisplayPayload } from "@/lib/watermark/watermark-contract";
 
 const RATE_LIMIT_VIEWS_PER_HOUR = parsePositiveIntEnv(
   process.env.RATE_LIMIT_VIEWS_PER_HOUR,
@@ -72,6 +73,10 @@ type SecureAccessContext = {
   requestId: string;
   startedAt: number;
   filePath: string;
+  watermark: WatermarkDisplayPayload;
+  isHighValue: boolean;
+  isDownloadable: boolean;
+  numPages: number;
   logBlocked: (_reason: string, _res: NextResponse, _docId?: string | null) => NextResponse;
   logSuccess: () => Promise<void>;
 };
@@ -120,7 +125,7 @@ export async function runNextSecureDocumentAccess({
       requestId,
       correlationId: requestId,
       latencyMs: Date.now() - startedAt,
-    }).catch(() => {});
+    }).catch(() => { });
     return res;
   };
 
@@ -161,17 +166,83 @@ export async function runNextSecureDocumentAccess({
     }
   }
 
-  const { data: profile } = await supabase
+  // Đọc profile bằng service role, luôn .eq("id", user.id) sau khi getUser() — tránh RLS/cookie trong Route Handler
+  // khiến client anon trả 0 dòng dù hàng profiles tồn tại (mọi user đều thấy profile_missing).
+  const { data: profile, error: profileLoadError } = await service
     .from("profiles")
-    .select("role, admin_role, is_active, banned_until")
+    .select("*")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!isProfileActive(profile)) {
+  if (profileLoadError) {
+    console.error("secure-access: profile load", profileLoadError.message);
     return {
       ok: false,
-      response: logBlocked("inactive_profile", NextResponse.json({ error: "Tài khoản đã bị khóa." }, { status: 403 })),
+      response: NextResponse.json(
+        { error: "Không thể tải hồ sơ tài khoản. Vui lòng thử lại sau.", code: "profile_load_error" },
+        { status: 503 }
+      ),
     };
+  }
+
+  // Trước đây dùng isProfileActive(null) → false và trả cùng câu "đã bị khóa" — gây nhầm khi thiếu dòng profiles.
+  if (!profile) {
+    return {
+      ok: false,
+      response: logBlocked(
+        "profile_missing",
+        NextResponse.json(
+          {
+            error:
+              "Không tìm thấy hồ sơ tài khoản. Vui lòng đăng xuất và đăng nhập lại, hoặc liên hệ hỗ trợ (cần đồng bộ bảng profiles với Auth).",
+            code: "profile_missing",
+          },
+          { status: 403 }
+        )
+      ),
+    };
+  }
+
+  if (profile.is_locked) {
+    return {
+      ok: false,
+      response: logBlocked(
+        "account_locked",
+        NextResponse.json(
+          { error: profile.lock_reason || "Tài khoản bị khóa do nghi ngờ vi phạm chính sách bảo mật.", is_locked: true },
+          { status: 403 }
+        )
+      ),
+    };
+  }
+
+  if (profile.is_active === false) {
+    return {
+      ok: false,
+      response: logBlocked(
+        "inactive_profile",
+        NextResponse.json({ error: "Tài khoản đã bị vô hiệu hóa.", code: "inactive" }, { status: 403 })
+      ),
+    };
+  }
+
+  if (profile.banned_until) {
+    const untilMs = Date.parse(profile.banned_until);
+    if (Number.isFinite(untilMs) && untilMs > Date.now()) {
+      return {
+        ok: false,
+        response: logBlocked(
+          "temp_banned",
+          NextResponse.json(
+            {
+              error: `Tài khoản đang bị khóa tạm thời. Thử lại sau ${new Date(untilMs).toLocaleString("vi-VN")}.`,
+              code: "banned_until",
+            },
+            { status: 403 }
+          )
+        ),
+      };
+    }
   }
 
   const isSuperAdmin = computeIsSuperAdmin(profile);
@@ -182,7 +253,7 @@ export async function runNextSecureDocumentAccess({
     // Phase-3 optimization (cookie-first by doc2share_sid) is intentionally deferred
     // because it changes secure-access contract across Next/Edge paths.
     const [{ data: devices }, { data: activeSession }] = await Promise.all([
-      supabase.from("device_logs").select("device_id").eq("user_id", user.id),
+      supabase.from("device_logs").select("device_id, hardware_hash").eq("user_id", user.id),
       service
         .from("active_sessions")
         .select("device_id")
@@ -192,7 +263,37 @@ export async function runNextSecureDocumentAccess({
         .maybeSingle(),
     ]);
 
+    const hardwareHash = body?.hardware_hash;
     const deviceIds = (devices ?? []).map((d: { device_id: string }) => d.device_id);
+
+    // Hardware hash check: log mismatch for monitoring but do NOT hard-block.
+    // Legitimate reasons for hash changes: GPU driver update, OS upgrade, browser update.
+    // Hard-blocking here caused false-positive lockouts for valid users.
+    if (hardwareHash) {
+      const match = (devices ?? []).find(d => d.device_id === deviceId);
+      if (match && match.hardware_hash && match.hardware_hash !== hardwareHash) {
+        // Log the mismatch for forensic review (fire-and-forget)
+        void service.from("security_logs").insert({
+          user_id: user.id,
+          event_type: "hardware_hash_changed",
+          severity: "medium",
+          ip_address: ip,
+          device_id: deviceId,
+          metadata: {
+            old_hash: match.hardware_hash.slice(0, 8) + "…",
+            new_hash: hardwareHash.slice(0, 8) + "…",
+            request_id: requestId,
+          },
+        });
+
+        // Update stored hash to the new legitimate value (fire-and-forget)
+        void supabase.from("device_logs")
+          .update({ hardware_hash: hardwareHash })
+          .eq("user_id", user.id)
+          .eq("device_id", deviceId);
+      }
+    }
+
     const deviceGate = evaluateDeviceGate(deviceIds, deviceId, isSuperAdmin);
     if (!deviceGate.ok) {
       return {
@@ -212,7 +313,9 @@ export async function runNextSecureDocumentAccess({
         {
           user_id: user.id,
           device_id: deviceId,
-          device_info: {},
+          device_info: { userAgent: req.headers.get("user-agent"), ip },
+          hardware_hash: hardwareHash || null,
+          hardware_fingerprint: body?.hardware_fingerprint || null,
           last_login: new Date().toISOString(),
         },
         { onConflict: "user_id,device_id" }
@@ -226,7 +329,7 @@ export async function runNextSecureDocumentAccess({
           ok: false,
           response: logBlocked(
             "no_active_session",
-            NextResponse.json({ error: toSessionBindingErrorMessage("no_active_session") }, { status: 403 })
+            NextResponse.json({ error: toSessionBindingErrorMessage("no_active_session"), code: "SESSION_BINDING_FAILED" }, { status: 403 })
           ),
         };
       }
@@ -234,7 +337,7 @@ export async function runNextSecureDocumentAccess({
         ok: false,
         response: logBlocked(
           "device_mismatch",
-          NextResponse.json({ error: toSessionBindingErrorMessage("device_mismatch") }, { status: 403 })
+          NextResponse.json({ error: toSessionBindingErrorMessage("device_mismatch"), code: "SESSION_BINDING_FAILED" }, { status: 403 })
         ),
       };
     }
@@ -281,9 +384,9 @@ export async function runNextSecureDocumentAccess({
       .gte("created_at", tenMinAgo),
     service
       .from("documents")
-      .select("file_path")
+      .select("file_path, is_high_value, num_pages, is_downloadable")
       .eq("id", documentId)
-      .single(),
+      .maybeSingle(),
   ]);
 
   if (wouldExceedHourlySuccessLimit(countHour ?? 0, RATE_LIMIT_VIEWS_PER_HOUR)) {
@@ -313,12 +416,48 @@ export async function runNextSecureDocumentAccess({
     };
   }
 
-  if (docError || !doc?.file_path) {
+  if (docError) {
+    console.error("secure-access: document row load", docError.message);
+    return {
+      ok: false,
+      response: logBlocked(
+        "document_load_error",
+        NextResponse.json(
+          { error: "Không thể tải thông tin tài liệu. Vui lòng thử lại sau.", code: "document_load_error" },
+          { status: 503 }
+        ),
+        documentId
+      ),
+    };
+  }
+
+  if (!doc) {
     return {
       ok: false,
       response: logBlocked("not_found", NextResponse.json({ error: "Tài liệu không tồn tại." }, { status: 404 }), null),
     };
   }
+
+  const filePath = typeof doc.file_path === "string" ? doc.file_path.trim() : "";
+  if (!filePath) {
+    return {
+      ok: false,
+      response: logBlocked(
+        "document_file_missing",
+        NextResponse.json(
+          {
+            error:
+              "Tài liệu chưa có file trên hệ thống (đang xử lý hoặc lỗi pipeline). Vui lòng thử lại sau hoặc liên hệ hỗ trợ.",
+            code: "document_file_missing",
+          },
+          { status: 503 }
+        ),
+        documentId
+      ),
+    };
+  }
+
+  const watermarkIssued = issueWatermark(documentId);
 
   return {
     ok: true,
@@ -331,7 +470,16 @@ export async function runNextSecureDocumentAccess({
       ip,
       requestId,
       startedAt,
-      filePath: doc.file_path,
+      filePath,
+      watermark: {
+        wmShort: watermarkIssued.wmShort,
+        wmDocShort: watermarkIssued.wmDocShort,
+        wmIssuedAtBucket: watermarkIssued.wmIssuedAtBucket,
+        wmVersion: watermarkIssued.wmVersion,
+      },
+      isHighValue: !!doc.is_high_value,
+      isDownloadable: !!doc.is_downloadable,
+      numPages: Number(doc.num_pages || 0),
       logBlocked,
       logSuccess: async () => {
         await logSecurePdfAccess({
@@ -343,7 +491,8 @@ export async function runNextSecureDocumentAccess({
           requestId,
           correlationId: requestId,
           latencyMs: Date.now() - startedAt,
-        }).catch(() => {});
+          watermark: watermarkIssued,
+        }).catch(() => { });
       },
     },
   };

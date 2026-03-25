@@ -67,12 +67,14 @@ export function useAdminDocumentsActions({
       grade_id?: number | null;
       exam_id?: number | null;
       is_downloadable?: boolean | null;
+      is_high_value?: boolean | null;
     } = { documentId: id };
     if (field === "price") payload.price = Number(value ?? 0);
     if (field === "subject_id") payload.subject_id = (value as number | null) ?? null;
     if (field === "grade_id") payload.grade_id = (value as number | null) ?? null;
     if (field === "exam_id") payload.exam_id = (value as number | null) ?? null;
     if (field === "is_downloadable") payload.is_downloadable = Boolean(value);
+    if (field === "is_high_value") payload.is_high_value = Boolean(value);
     const result = await updateDocumentMetadata(payload);
     if (!result.ok) toast.error(result.error);
     else {
@@ -191,6 +193,7 @@ export function useAdminDocumentsActions({
       grade_id: editForm.grade_id,
       exam_id: editForm.exam_id,
       is_downloadable: editForm.is_downloadable,
+      is_high_value: editForm.is_high_value,
       status: editForm.status,
     });
     if (!result.ok) toast.error(result.error);

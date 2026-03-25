@@ -34,6 +34,7 @@ export function useAdminDocumentsModals() {
       grade_id: doc.grade_id ?? null,
       exam_id: doc.exam_id ?? null,
       is_downloadable: doc.is_downloadable,
+      is_high_value: doc.is_high_value ?? false,
       status: (doc.status ?? "ready") as EditFormState["status"],
     });
   }, []);

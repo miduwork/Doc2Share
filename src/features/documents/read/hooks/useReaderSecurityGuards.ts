@@ -5,11 +5,10 @@ import { useEffect, useRef, useState } from "react";
 const BLUR_HIDE_DELAY_MS = 400;
 
 export default function useReaderSecurityGuards() {
-  const [mouseInView, setMouseInView] = useState(true);
   const [contentHidden, setContentHidden] = useState(false);
   const blurHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Chặn sao chép, in, lưu, cắt, kéo thả, phím tắt chụp màn hình, F12; khi bấm Print Screen → che đen toàn màn hình ngay
+  // Chặn sao chép, in, lưu, cắt, kéo thả, phím tắt chụp màn hình, F12; khi bấm Print Screen → che đen toàn màn hình
   useEffect(() => {
     const prevent = (e: Event) => e.preventDefault();
 
@@ -49,19 +48,9 @@ export default function useReaderSecurityGuards() {
     };
   }, []);
 
-  // Mouse leave viewport -> blur
-  useEffect(() => {
-    const onLeave = () => setMouseInView(false);
-    const onEnter = () => setMouseInView(true);
-    document.documentElement.addEventListener("mouseleave", onLeave);
-    document.documentElement.addEventListener("mouseenter", onEnter);
-    return () => {
-      document.documentElement.removeEventListener("mouseleave", onLeave);
-      document.documentElement.removeEventListener("mouseenter", onEnter);
-    };
-  }, []);
-
-  // Chống chụp màn hình: che khi tab ẩn (ngay) hoặc mất focus (sau delay để tránh che nhấp nháy)
+  // Bảo vệ màn hình: chỉ che màn hình khi tab bị ẩn (chuyển tab/minimize cửa sổ).
+  // Đã gỡ bỏ window blur/focus để cho phép đọc side-by-side thoải mái.
+  // Đã gỡ bỏ mouseLeave viewport để tránh vô tình che khi dùng taskbar.
   useEffect(() => {
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
@@ -70,33 +59,15 @@ export default function useReaderSecurityGuards() {
           blurHideTimerRef.current = null;
         }
         setContentHidden(true);
+      } else {
+        setContentHidden(false);
       }
-    };
-
-    const onBlur = () => {
-      if (blurHideTimerRef.current) clearTimeout(blurHideTimerRef.current);
-      blurHideTimerRef.current = setTimeout(() => {
-        blurHideTimerRef.current = null;
-        setContentHidden(true);
-      }, BLUR_HIDE_DELAY_MS);
-    };
-
-    const onFocus = () => {
-      if (blurHideTimerRef.current) {
-        clearTimeout(blurHideTimerRef.current);
-        blurHideTimerRef.current = null;
-      }
-      setContentHidden(false);
     };
 
     document.addEventListener("visibilitychange", onVisibilityChange);
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("focus", onFocus);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
       if (blurHideTimerRef.current) {
         clearTimeout(blurHideTimerRef.current);
         blurHideTimerRef.current = null;
@@ -104,6 +75,6 @@ export default function useReaderSecurityGuards() {
     };
   }, []);
 
-  return { contentHidden, mouseInView, setContentHidden };
+  return { contentHidden, setContentHidden };
 }
 

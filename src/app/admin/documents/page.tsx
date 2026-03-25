@@ -42,8 +42,8 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
   let docsQuery = supabase
     .from("documents")
     .select(
-      "id, title, description, price, preview_url, thumbnail_url, subject_id, grade_id, exam_id, is_downloadable, status, quality_score, data_quality_status, quality_flags, approval_status, created_at",
-      { count: "planned" }
+      "id, title, description, price, preview_url, thumbnail_url, subject_id, grade_id, exam_id, is_downloadable, status, quality_score, data_quality_status, quality_flags, approval_status, is_high_value, created_at",
+      { count: "exact" }
     );
 
   if (status === "deleted") {
@@ -71,7 +71,7 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
   docsQuery = docsQuery.range((page - 1) * pageSize, page * pageSize - 1);
   const { data: docs, count: docsCount } = await docsQuery;
   const docIds = (docs ?? []).map((d) => d.id);
-  const { data: categories } = await supabase.from("categories").select("id, name, type");
+  const { data: categories } = await supabase.from("categories").select("id, name, type, position");
   const { data: jobs } = docIds.length
     ? await supabase
         .from("document_processing_jobs")
@@ -85,11 +85,24 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
     { count: pipelineQueued },
     { count: pipelineProcessing },
     { count: pipelineFailed },
+    { data: queuedJobsPreview },
   ] = await Promise.all([
     supabase.from("document_processing_jobs").select("id", { count: "exact", head: true }).eq("status", "queued"),
     supabase.from("document_processing_jobs").select("id", { count: "exact", head: true }).eq("status", "processing"),
     supabase.from("document_processing_jobs").select("id", { count: "exact", head: true }).eq("status", "failed"),
+    supabase
+      .from("document_processing_jobs")
+      .select("document_id, documents(title)")
+      .eq("status", "queued")
+      .order("created_at", { ascending: true })
+      .limit(30),
   ]);
+  type QueuedPreviewRow = { document_id: string; documents: { title: string | null } | { title: string | null }[] | null };
+  const queuedTitles = ((queuedJobsPreview ?? []) as QueuedPreviewRow[]).map((row) => {
+    const d = row.documents;
+    const title = Array.isArray(d) ? d[0]?.title : d?.title;
+    return { documentId: row.document_id, title: title?.trim() || "(Không tiêu đề)" };
+  });
   const pipelineQueuedN = pipelineQueued ?? 0;
   const pipelineProcessingN = pipelineProcessing ?? 0;
   const pipelineFailedN = pipelineFailed ?? 0;
@@ -142,7 +155,7 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
             <Activity className="h-3.5 w-3.5 text-muted" aria-hidden />
             Pipeline
           </span>
-          <span className="text-muted">Chờ: <strong className="text-fg">{pipelineQueuedN}</strong></span>
+          <span className="text-muted">Chờ (job postprocess): <strong className="text-fg">{pipelineQueuedN}</strong></span>
           <span className="text-muted">Đang xử lý: <strong className="text-fg">{pipelineProcessingN}</strong></span>
           <span className={pipelineFailedN > 0 ? "flex items-center gap-1 text-amber-600 dark:text-amber-400" : "text-muted"}>
             {pipelineFailedN > 0 && <AlertTriangle className="h-3.5 w-3.5" aria-hidden />}
@@ -153,13 +166,38 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
               Cần kiểm tra
             </span>
           )}
-          <Link
-            href="/admin/observability?preset=document-pipeline&source=db.document_lifecycle&event_type=all"
-            className="ml-auto text-sm text-primary hover:underline"
-          >
-            Observability →
-          </Link>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Link
+              href="/admin/documents?workspace=manage&preset=failed&status=failed"
+              className="text-sm text-primary hover:underline"
+            >
+              Tài liệu lỗi →
+            </Link>
+            <span className="text-muted" aria-hidden>
+              |
+            </span>
+            <Link
+              href="/admin/observability?preset=document-pipeline&source=db.document_lifecycle&event_type=pipeline_tick"
+              className="text-sm text-primary hover:underline"
+            >
+              Log tick pipeline →
+            </Link>
+          </div>
         </div>
+      )}
+      {workspace !== "bulk-history" && pipelineQueuedN > 0 && (
+        <p className="mb-3 text-xs text-muted">
+          <strong className="text-fg">Chờ</strong> là số <strong>job hậu kỳ</strong> (postprocess, bảng document_processing_jobs) chưa được cron xử lý —{" "}
+          <strong className="text-fg">khác</strong> với “Đang bán” trên tài liệu: có thể đã duyệt/đăng bán trước khi pipeline chạy xong.
+          {queuedTitles.length > 0 ? (
+            <>
+              {" "}
+              Job đang chờ (theo thứ tự):{" "}
+              <span className="text-fg">{queuedTitles.map((x) => x.title).join(" · ")}</span>
+              {pipelineQueuedN > queuedTitles.length ? ` (+${pipelineQueuedN - queuedTitles.length} khác)` : ""}
+            </>
+          ) : null}
+        </p>
       )}
       <div className="reveal-section">
         <AdminDocumentsClient

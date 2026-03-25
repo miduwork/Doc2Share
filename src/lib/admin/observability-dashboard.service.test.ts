@@ -34,6 +34,14 @@ function createSupabaseMock() {
       },
     ],
     observability_events: [
+      {
+        id: "e3",
+        created_at: "2026-03-24T11:30:00.000Z",
+        severity: "warn",
+        source: "next.reader",
+        event_type: "watermark_degraded_fallback",
+        metadata: null,
+      },
       { id: "e2", created_at: "2026-03-24T11:00:00.000Z", severity: "error", source: "edge.payment_webhook", event_type: "incident", metadata: null },
       { id: "e1", created_at: "2026-03-24T10:00:00.000Z", severity: "warn", source: "db.alerts", event_type: "threshold", metadata: null },
     ],
@@ -129,6 +137,7 @@ test("getObservabilityDashboardData builds page blocks and section data", async 
 
   assert.equal(data.header.selectedPreset, "webhook-errors");
   assert.equal(data.sections.kpi.pipeline.queued, 2);
+  assert.equal(data.sections.kpi.watermarkDegraded24h, 1);
   assert.equal(data.sections.kpi.pipeline.processing, 3);
   assert.equal(data.sections.kpi.pipeline.failed, 1);
   assert.equal(data.sections.alerts.alertEvents.length > 0, true);
