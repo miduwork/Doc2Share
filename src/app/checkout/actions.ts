@@ -35,11 +35,11 @@ function resolveCheckoutDeps(overrides?: Partial<CheckoutActionDeps>): CheckoutA
   };
 }
 
-import { runCheckoutOrchestrator } from "@/lib/domain/checkout/services/checkout-service";
+import { createDocumentOrder } from "@/lib/orders/createOrder";
+import { createOrderRepository } from "@/lib/orders/repository";
 
 export async function createCheckoutVietQr(
   documentId: string,
-  deps?: Partial<CheckoutActionDeps>
 ): Promise<ActionResult<CheckoutData>> {
   if (!documentId || !isValidUuid(documentId)) return fail("document_id không hợp lệ.");
 
@@ -48,11 +48,9 @@ export async function createCheckoutVietQr(
   if (!authData.user) return fail("Vui lòng đăng nhập để thanh toán.");
 
   try {
-    const { repository, paymentProvider } = resolveCheckoutDeps(deps);
-    const result = await runCheckoutOrchestrator({
-      repository,
-      paymentProvider,
-      documentId,
+    const result = await createDocumentOrder({
+      userId: authData.user.id,
+      documentId: documentId,
     });
     return ok(result);
   } catch (error) {
@@ -62,7 +60,6 @@ export async function createCheckoutVietQr(
 
 export async function getCheckoutOrderStatus(
   orderId: string,
-  deps?: Partial<CheckoutActionDeps>
 ): Promise<ActionResult<CheckoutStatusData>> {
   if (!orderId || !isValidUuid(orderId)) return fail("order_id không hợp lệ.");
 
@@ -71,10 +68,10 @@ export async function getCheckoutOrderStatus(
   if (!authData.user) return fail("Vui lòng đăng nhập để kiểm tra đơn hàng.");
 
   try {
-    const { repository } = resolveCheckoutDeps(deps);
+    const repository = createOrderRepository();
     const status = await repository.getOrderStatus(orderId);
     if (!status) return fail("Không tìm thấy đơn hàng.");
-    return ok({ orderId: status.orderId, status: status.status, paidAt: status.paidAt });
+    return ok(status);
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Không tìm thấy đơn hàng.");
   }

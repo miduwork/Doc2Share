@@ -117,9 +117,10 @@ export default function CheckoutForm() {
   }
 
   async function downloadQrCode() {
-    if (!order?.paymentLink) return;
+    if (!order) return;
     try {
-      const res = await fetch(order.paymentLink);
+      const url = `/api/qr?amount=${order.amount}&addInfo=${encodeURIComponent(order.transferContent)}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error("download_failed");
       const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
@@ -221,31 +222,25 @@ export default function CheckoutForm() {
               ) : null}
             </div>
 
-            {order.paymentLink ? (
-              <div className="space-y-3">
-                {/* eslint-disable-next-line @next/next/no-img-element -- VietQR data URL; next/image not suited */}
-                <img
-                  src={order.paymentLink}
-                  alt="VietQR thanh toán"
-                  loading="eager"
-                  decoding="async"
-                  fetchPriority="high"
-                  width={280}
-                  height={280}
-                  className="mx-auto block w-full max-w-[280px] rounded-xl border border-line bg-surface p-2"
-                />
-                <p className="text-xs text-muted">
-                  Quét mã VietQR bằng app ngân hàng để thanh toán. Hệ thống sẽ mở quyền sau khi webhook xác nhận giao dịch.
-                </p>
-                <button type="button" className="btn-secondary w-full" onClick={downloadQrCode}>
-                  Tải mã QR
-                </button>
-              </div>
-            ) : (
-              <p className="text-sm text-amber-600">
-                Chưa cấu hình VietQR (VIETQR_BANK_BIN / VIETQR_ACCOUNT_NO / VIETQR_ACCOUNT_NAME). Vui lòng liên hệ admin.
+            <div className="space-y-3">
+              {/* eslint-disable-next-line @next/next/no-img-element -- Proxy API; next/image not suited */}
+              <img
+                src={`/api/qr?amount=${order.amount}&addInfo=${encodeURIComponent(order.transferContent)}`}
+                alt="VietQR thanh toán"
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
+                width={280}
+                height={280}
+                className="mx-auto block w-full max-w-[280px] rounded-xl border border-line bg-surface p-2"
+              />
+              <p className="text-xs text-muted">
+                Quét mã VietQR bằng app ngân hàng để thanh toán. Hệ thống sẽ mở quyền sau khi webhook xác nhận giao dịch.
               </p>
-            )}
+              <button type="button" className="btn-secondary w-full" onClick={downloadQrCode}>
+                Tải mã QR
+              </button>
+            </div>
           </div>
         )}
 
