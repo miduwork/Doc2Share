@@ -9,7 +9,8 @@ export type SePayPayload = {
   content?: string;
   description?: string;
   transferType?: string;
-  transferAmount?: number;
+  transferAmount?: number | string;
+  amount?: number | string;
   referenceCode?: string;
 };
 
@@ -26,6 +27,8 @@ export function normalizeOrderRef(value: string | null | undefined): string | nu
   const trimmed = value.trim();
   if (!trimmed) return null;
   if (/^VQR-/i.test(trimmed) || /^D2S-/i.test(trimmed)) return trimmed.toUpperCase();
+  // Support 8-char hex prefix (from IN AN format)
+  if (/^[a-fA-F0-9]{8}$/.test(trimmed)) return trimmed.toUpperCase();
   return trimmed;
 }
 
@@ -44,6 +47,10 @@ export function extractOrderReferences(payload: SePayPayload): string[] {
   // Format mới: ứng dụng - người dùng - đơn (D2S-XXXX-YYYY)
   const d2sAppUserOrder = text.match(/\b(D2S-[A-Za-z0-9]{4}-[A-Za-z0-9]{8})\b/i)?.[1];
   if (d2sAppUserOrder) refs.add(d2sAppUserOrder.toUpperCase());
+
+  // Format "IN AN XXXXXXXX" (Doc2Share current default)
+  const inAn = text.match(/IN\s*AN\s*([a-fA-F0-9]{6,8})\b/i)?.[1];
+  if (inAn) refs.add(inAn.toUpperCase());
 
   // Format cũ: D2S-XXXXXXXX (6–16 ký tự, tương thích đơn cũ)
   const d2s = text.match(/\bD2S-([A-Za-z0-9]{6,16})\b/i)?.[1];
@@ -67,9 +74,20 @@ export function isIncomingTransfer(payload: SePayPayload): boolean {
 }
 
 export function extractAmount(payload: SePayPayload): number | null {
-  const v = payload.transferAmount;
+  const v = payload.transferAmount ?? payload.amount;
   if (v == null) return null;
-  const n = Number(v);
-  if (!Number.isFinite(n)) return null;
-  return Math.round(n);
+  if (typeof v === "number") return Math.round(v);
+  if (typeof v === "string") {
+    const cleaned = v.replace(/[^\d.,]/g, "");
+    if (!cleaned) return null;
+    if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
+      return parseInt(cleaned.replace(/\./g, ""), 10);
+    }
+    if (/^\d{1,3}(,\d{3})+$/.test(cleaned)) {
+      return parseInt(cleaned.replace(/,/g, ""), 10);
+    }
+    const n = parseFloat(cleaned.replace(/,/g, "."));
+    return isFinite(n) ? Math.round(n) : null;
+  }
+  return null;
 }

@@ -1,6 +1,9 @@
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import {
+    extractOrderReferences,
+    extractAmount,
+} from "@/lib/payments/sepay-webhook-core";
 
-const ORDER_ID_REGEX = /IN AN\s+([a-fA-F0-9]{6,8})/i;
 const PAYMENT_STATUS_PAID = "Đã thanh toán";
 const PRIORITY_NORMAL = "Ưu tiên";
 
@@ -48,23 +51,36 @@ export async function parseSePayJson(request: Request): Promise<
     }
 }
 
-function extractOrderIdPrefix(text: string | null | undefined): string | null {
-    if (!text || typeof text !== "string") return null;
-    const m = text.match(ORDER_ID_REGEX);
-    return m ? m[1].toLowerCase() : null;
-}
 
 function coerceAmount(v: unknown): number | null {
     if (typeof v === "number" && Number.isFinite(v)) return v;
     if (typeof v === "string" && v.trim() !== "") {
+        // Normalize input: remove spaces, keep only digits and separators.
         const s = v.replace(/\s/g, "");
-        if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
-            return parseInt(s.replace(/\./g, ""), 10);
+        const cleaned = s.replace(/[^\d.,]/g, "");
+        if (!cleaned) return null;
+
+        // Thousands separator with dot: "2.000" => 2000
+        if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
+            return parseInt(cleaned.replace(/\./g, ""), 10);
         }
-        if (/^\d+$/.test(s)) {
-            return parseInt(s, 10);
+
+        // Thousands separator with comma: "2,000" => 2000
+        if (/^\d{1,3}(,\d{3})+$/.test(cleaned)) {
+            return parseInt(cleaned.replace(/,/g, ""), 10);
         }
-        const n = parseFloat(s);
+
+        // Integer amount: "2000"
+        if (/^\d+$/.test(cleaned)) {
+            return parseInt(cleaned, 10);
+        }
+
+        // Decimal fallback:
+        // - if only comma is present, treat comma as decimal separator
+        // - otherwise, keep dots as decimal separator
+        const normalized =
+            cleaned.includes(",") && !cleaned.includes(".") ? cleaned.replace(/,/g, ".") : cleaned;
+        const n = parseFloat(normalized);
         return Number.isFinite(n) ? n : null;
     }
     return null;
@@ -79,7 +95,7 @@ export function normalizeSePayPayload(
     if (lower === "in" || lower === "credit") transferTypeNorm = "in";
     else if (lower === "out" || lower === "debit") transferTypeNorm = "out";
 
-    const amt = coerceAmount(body.transferAmount) ?? coerceAmount(body.amount) ?? 0;
+    const amt = extractAmount(body as any) ?? 0;
 
     if (transferTypeNorm === "other" && amt > 0) {
         transferTypeNorm = "in";
@@ -101,36 +117,87 @@ export async function handleSePayWebhook(
     }
 
     const admin = createServiceRoleClient();
-    const orderIdPrefix = extractOrderIdPrefix(text);
+    const refs = extractOrderReferences(body as any);
 
-    if (!orderIdPrefix) {
+    if (refs.length === 0) {
+        console.error("Webhook SePay: no order reference in content/description", {
+            content: typeof content === "string" ? content.slice(0, 80) : content,
+        });
         await logTransaction(admin, body, { order_id: null, order_id_prefix: null });
         return { ok: true, status: 200, message: "No order code in content" };
     }
 
-    // Find order by 8-char prefix (id::text)
-    const { data: orderRows, error: findError } = await admin.rpc(
-        "match_orders_by_id_prefix",
-        { p_prefix: orderIdPrefix },
-    );
-    const orders = orderRows ?? [];
+    let order: any = null;
+    let orderIdPrefixMatch: string | null = null;
 
-    if (findError || !orders.length) {
-        await logTransaction(admin, body, { order_id: null, order_id_prefix: orderIdPrefix });
+    // Try matching each ref until we find an order
+    for (const ref of refs) {
+        let matchedOrders: any[] = [];
+
+        // 1. Try matching by UUID prefix via RPC (optimized, if exists)
+        try {
+            const { data: rpcRows, error: rpcError } = await admin.rpc(
+                "match_orders_by_id_prefix",
+                { p_prefix: ref },
+            );
+            if (!rpcError && Array.isArray(rpcRows) && rpcRows.length > 0) {
+                matchedOrders = rpcRows;
+            }
+        } catch (e) {
+            // silent fail for RPC
+        }
+
+        // 2. Fallback to direct external_id match if RPC failed or missed
+        if (matchedOrders.length === 0) {
+            const { data: fallbackRows, error: fallbackError } = await admin
+                .from("orders")
+                .select("id, total_price, total_amount, payment_status, status")
+                .ilike("external_id", `${ref}%`)
+                .limit(2);
+
+            if (!fallbackError && Array.isArray(fallbackRows) && fallbackRows.length > 0) {
+                matchedOrders = fallbackRows;
+            }
+        }
+
+        if (matchedOrders.length > 0) {
+            order = matchedOrders[0];
+            orderIdPrefixMatch = ref;
+            break; // FOUND!
+        }
+    }
+
+    if (!order) {
+        console.error("Webhook SePay: order not found for any ref", { refs });
+        await logTransaction(admin, body, { order_id: null, order_id_prefix: refs.join(",") });
         return { ok: true, status: 200, message: "Order not found" };
     }
 
-    const order = orders[0];
-    const expectedAmount = Number(order.total_price ?? 0);
+    const orderIdPrefix = orderIdPrefixMatch!;
+    const expectedAmount = Number((order as any).total_price ?? (order as any).total_amount ?? 0);
     const amountMatched = transferAmount === expectedAmount && expectedAmount > 0;
 
     if (!amountMatched) {
+        console.error("Webhook SePay: amount mismatch", {
+            orderIdPrefix,
+            expectedAmount,
+            transferAmount,
+            orderId: order.id,
+            total_price: (order as any).total_price,
+            total_amount: (order as any).total_amount,
+        });
         await logTransaction(admin, body, {
             order_id: order.id,
             order_id_prefix: orderIdPrefix,
             amount_matched: false,
+            // Extra debug info in JSON
+            metadata: { expectedAmount, transferAmount, orderId: order.id, actualPrice: (order as any).total_price, actualAmount: (order as any).total_amount }
         });
-        return { ok: true, status: 200, message: "Amount mismatch" };
+        return {
+            ok: true,
+            status: 200,
+            message: `Amount mismatch (expected=${expectedAmount}, got=${transferAmount})`,
+        };
     }
 
     // ATOMIC COMPLETION (Updates order.status and grants document permissions)
@@ -170,18 +237,28 @@ export async function handleSePayWebhook(
 }
 
 async function logTransaction(admin: any, body: SePayWebhookPayload, metadata: any) {
-    const { transferAmount } = normalizeSePayPayload(body);
-    await admin.from("transactions").insert({
-        sepay_id: body.id ?? null,
-        gateway: body.gateway ?? null,
-        transaction_date: body.transactionDate ?? body.transaction_date ?? null,
-        account_number: body.accountNumber ?? body.account_number ?? null,
-        content: body.content ?? null,
-        description: body.description ?? null,
-        transfer_type: body.transferType ?? body.transfer_type ?? null,
-        transfer_amount: transferAmount,
-        reference_code: body.referenceCode ?? body.reference_code ?? null,
-        raw_payload: body,
-        ...metadata,
-    });
+    const transferAmount = extractAmount(body as any) ?? 0;
+    try {
+        await admin.from("transactions").insert({
+            sepay_id: body.id ?? null,
+            gateway: body.gateway ?? null,
+            transaction_date: body.transactionDate ?? body.transaction_date ?? null,
+            account_number: body.accountNumber ?? body.account_number ?? null,
+            content: body.content ?? null,
+            description: body.description ?? null,
+            transfer_type: body.transferType ?? body.transfer_type ?? null,
+            transfer_amount: transferAmount,
+            reference_code: body.referenceCode ?? body.reference_code ?? null,
+            raw_payload: body,
+            ...metadata,
+        });
+    } catch {
+        // Fallback to observability if transactions table fails
+        await admin.from("observability_events").insert({
+            source: "api.webhook_sepay",
+            event_type: "transaction_log_fallback",
+            severity: "info",
+            metadata: { ...body, ...metadata },
+        });
+    }
 }

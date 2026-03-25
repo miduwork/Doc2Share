@@ -55,6 +55,14 @@ test("extractOrderReferences recognizes app-user-order format D2S-XXXX-YYYY", ()
   assert.ok(refs.includes("D2S-A1B2-C3D4E5F6"), "refs should include full D2S-XXXX-YYYY: " + JSON.stringify(refs));
 });
 
+test("extractOrderReferences recognizes IN AN format", () => {
+  const payload: SePayPayload = {
+    content: "Thanh toan IN AN ABCDEF12 tai lieu",
+  };
+  const refs = extractOrderReferences(payload);
+  assert.ok(refs.includes("ABCDEF12"), "refs should include hex prefix: " + JSON.stringify(refs));
+});
+
 test("resolveEventId uses payload.id when present", () => {
   const payload: SePayPayload = { id: 999 };
   assert.equal(resolveEventId(payload, [], "a".repeat(64)), "sepay:999");
@@ -104,5 +112,5 @@ test("extractAmount returns VND number", () => {
 
 test("extractAmount returns null for missing or invalid", () => {
   assert.equal(extractAmount({}), null);
-  assert.equal(extractAmount({ transferAmount: "x" } as SePayPayload), null);
+  assert.equal(extractAmount({ transferAmount: "x" } as unknown as SePayPayload), null);
 });

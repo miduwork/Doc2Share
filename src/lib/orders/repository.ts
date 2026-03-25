@@ -19,15 +19,16 @@ export function createOrderRepository() {
         async getOrderStatus(orderId: string): Promise<{ orderId: string; status: OrderStatus; paidAt: string | null } | null> {
             const { data, error } = await admin
                 .from("orders")
-                .select("id, status, updated_at")
+                .select("id, status, payment_status, updated_at")
                 .eq("id", orderId)
                 .maybeSingle();
 
             if (error || !data) return null;
+            const isPaid = data.status === "completed" || data.payment_status === "Đã thanh toán";
             return {
                 orderId: data.id,
-                status: data.status,
-                paidAt: data.status === "completed" ? data.updated_at : null,
+                status: isPaid ? "completed" : data.status,
+                paidAt: isPaid ? data.updated_at : null,
             };
         },
 

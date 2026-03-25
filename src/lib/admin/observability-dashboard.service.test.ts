@@ -3,6 +3,8 @@ import { test } from "node:test";
 import { getObservabilityDashboardData } from "@/lib/admin/observability-dashboard.service";
 
 function createSupabaseMock() {
+  const now = Date.now();
+  const isoFromHoursAgo = (hoursAgo: number) => new Date(now - hoursAgo * 60 * 60 * 1000).toISOString();
   const tableData = {
     observability_metrics_24h: [
       {
@@ -36,14 +38,21 @@ function createSupabaseMock() {
     observability_events: [
       {
         id: "e3",
-        created_at: "2026-03-24T11:30:00.000Z",
+        created_at: isoFromHoursAgo(2),
         severity: "warn",
         source: "next.reader",
         event_type: "watermark_degraded_fallback",
         metadata: null,
       },
-      { id: "e2", created_at: "2026-03-24T11:00:00.000Z", severity: "error", source: "edge.payment_webhook", event_type: "incident", metadata: null },
-      { id: "e1", created_at: "2026-03-24T10:00:00.000Z", severity: "warn", source: "db.alerts", event_type: "threshold", metadata: null },
+      {
+        id: "e2",
+        created_at: isoFromHoursAgo(3),
+        severity: "error",
+        source: "edge.payment_webhook",
+        event_type: "incident",
+        metadata: null,
+      },
+      { id: "e1", created_at: isoFromHoursAgo(30), severity: "warn", source: "db.alerts", event_type: "threshold", metadata: null },
     ],
     document_processing_jobs: [],
   } as Record<string, any[]>;
