@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { ok, fail, type ActionResult } from "@/lib/action-result";
 import { isValidUuid, normalizeUuid } from "@/lib/uuid";
@@ -139,6 +139,11 @@ export async function bulkManageDocuments(
     }
 
     revalidatePath("/admin/documents");
+    revalidatePath("/");
+    revalidatePath("/cua-hang");
+    revalidateTag("documents");
+    revalidateTag("reviews");
+    revalidateTag("permissions");
     return ok({ summary: `Hoàn tất ${input.action}: thành công ${success}, lỗi ${failed}.` });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Bulk thao tác thất bại.");

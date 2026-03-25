@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { createSupabaseDocumentUploadRepository } from "@/lib/domain/document-upload";
 import { requireDocumentManagerContext } from "@/lib/admin/guards";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { ok, fail, type ActionResult } from "@/lib/action-result";
 import { parseUploadFormData } from "./parse-upload-form-data";
 
@@ -49,6 +49,11 @@ export async function saveDocumentDraft(input: SaveDraftInput): Promise<ActionRe
     const row = Array.isArray(upd) ? upd[0] : upd;
     if (!(row as { updated?: boolean })?.updated) return fail("Không tìm thấy nháp hoặc không có quyền sửa.");
     revalidatePath("/admin/documents");
+    revalidatePath("/");
+    revalidatePath("/cua-hang");
+    revalidateTag("documents");
+    revalidateTag("reviews");
+    revalidateTag("permissions");
     return ok({ session_id: input.session_id.trim() });
   }
 
@@ -71,6 +76,11 @@ export async function saveDocumentDraft(input: SaveDraftInput): Promise<ActionRe
   const sessionId = (row as { session_id?: string })?.session_id;
   if (!sessionId) return fail("Không tạo được phiên nháp.");
   revalidatePath("/admin/documents");
+  revalidatePath("/");
+  revalidatePath("/cua-hang");
+  revalidateTag("documents");
+  revalidateTag("reviews");
+  revalidateTag("permissions");
   return ok({ session_id: sessionId });
 }
 
@@ -167,6 +177,11 @@ export async function uploadDocumentFromDraft(formData: FormData): Promise<Actio
     }
 
     revalidatePath("/admin/documents");
+    revalidatePath("/");
+    revalidatePath("/cua-hang");
+    revalidateTag("documents");
+    revalidateTag("reviews");
+    revalidateTag("permissions");
     return ok();
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Lỗi gắn file";

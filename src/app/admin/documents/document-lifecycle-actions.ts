@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { type AdminContext } from "@/lib/admin/guards";
 import { ok, fail, type ActionResult } from "@/lib/action-result";
 import { isValidUuid, normalizeUuid } from "@/lib/uuid";
@@ -36,6 +36,11 @@ export async function deleteDocument(
     });
     if (!result.deleted) return fail("Không tìm thấy tài liệu để xóa.");
     revalidatePath("/admin/documents");
+    revalidatePath("/");
+    revalidatePath("/cua-hang");
+    revalidateTag("documents");
+    revalidateTag("reviews");
+    revalidateTag("permissions");
     return ok();
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Xóa tài liệu thất bại.");
@@ -71,6 +76,11 @@ export async function setDocumentStatus(
     });
     if (!result.updated) return fail("Không cập nhật được trạng thái tài liệu.");
     revalidatePath("/admin/documents");
+    revalidatePath("/");
+    revalidatePath("/cua-hang");
+    revalidateTag("documents");
+    revalidateTag("reviews");
+    revalidateTag("permissions");
     return ok();
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Đổi trạng thái thất bại.");
@@ -103,6 +113,11 @@ export async function retryDocumentProcessing(
     if (!statusResult.updated) return fail("Không cập nhật được trạng thái xử lý tài liệu.");
 
     revalidatePath("/admin/documents");
+    revalidatePath("/");
+    revalidatePath("/cua-hang");
+    revalidateTag("documents");
+    revalidateTag("reviews");
+    revalidateTag("permissions");
     return ok();
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Retry processing thất bại.");

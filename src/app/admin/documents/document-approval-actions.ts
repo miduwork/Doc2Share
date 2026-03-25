@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { type AdminContext } from "@/lib/admin/guards";
 import { ok, fail, type ActionResult } from "@/lib/action-result";
 import { isValidUuid, normalizeUuid } from "@/lib/uuid";
@@ -32,6 +32,11 @@ export async function submitDocumentForApproval(
     });
     if (!result.submitted) return fail("Không thể gửi duyệt tài liệu.");
     revalidatePath("/admin/documents");
+    revalidatePath("/");
+    revalidatePath("/cua-hang");
+    revalidateTag("documents");
+    revalidateTag("reviews");
+    revalidateTag("permissions");
     return ok();
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Submit approval thất bại.");
@@ -60,6 +65,11 @@ export async function approveDocument(
     });
     if (!result.approved) return fail("Không thể duyệt publish tài liệu.");
     revalidatePath("/admin/documents");
+    revalidatePath("/");
+    revalidatePath("/cua-hang");
+    revalidateTag("documents");
+    revalidateTag("reviews");
+    revalidateTag("permissions");
     return ok();
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Approve thất bại.");
@@ -89,6 +99,11 @@ export async function rejectDocument(
     });
     if (!result.rejected) return fail("Không thể reject tài liệu.");
     revalidatePath("/admin/documents");
+    revalidatePath("/");
+    revalidatePath("/cua-hang");
+    revalidateTag("documents");
+    revalidateTag("reviews");
+    revalidateTag("permissions");
     return ok();
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Reject thất bại.");

@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { requireDocumentManagerContext } from "@/lib/admin/guards";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import type { CategoryType } from "@/lib/types";
 import { ok, fail, type ActionResult } from "@/lib/action-result";
 
@@ -24,6 +24,9 @@ export async function createCategory(name: string, type: CategoryType): Promise<
   revalidatePath("/admin/documents");
   revalidatePath("/");
   revalidatePath("/cua-hang");
+  revalidateTag("documents");
+  revalidateTag("reviews");
+  revalidateTag("permissions");
   return ok(data as CategoryRow);
 }
 
@@ -44,6 +47,9 @@ export async function updateCategory(id: number, name: string): Promise<ActionRe
   revalidatePath("/admin/documents");
   revalidatePath("/");
   revalidatePath("/cua-hang");
+  revalidateTag("documents");
+  revalidateTag("reviews");
+  revalidateTag("permissions");
   return ok(data as CategoryRow);
 }
 
@@ -57,5 +63,8 @@ export async function deleteCategory(id: number): Promise<ActionResult<void>> {
   revalidatePath("/admin/documents");
   revalidatePath("/");
   revalidatePath("/cua-hang");
+  revalidateTag("documents");
+  revalidateTag("reviews");
+  revalidateTag("permissions");
   return ok();
 }

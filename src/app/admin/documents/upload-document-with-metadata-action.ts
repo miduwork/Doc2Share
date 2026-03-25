@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { createSupabaseDocumentUploadRepository, runDocumentUploadOrchestrator } from "@/lib/domain/document-upload";
 import { requireDocumentManagerContext } from "@/lib/admin/guards";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { ok, fail, type ActionResult } from "@/lib/action-result";
 import { parseUploadFormData } from "./parse-upload-form-data";
 
@@ -47,5 +47,10 @@ export async function uploadDocumentWithMetadata(formData: FormData): Promise<Ac
 
   if (!result.ok) return fail(result.error);
   revalidatePath("/admin/documents");
+  revalidatePath("/");
+  revalidatePath("/cua-hang");
+  revalidateTag("documents");
+  revalidateTag("reviews");
+  revalidateTag("permissions");
   return ok();
 }
