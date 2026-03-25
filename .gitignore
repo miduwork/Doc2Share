@@ -28,3 +28,7 @@ Thumbs.db
 
 *storybook.log
 storybook-static
+
+# local TypeScript build artifacts / debug dumps
+tsc_output*.txt
+tsconfig.tsbuildinfo
