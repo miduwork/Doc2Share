@@ -59,29 +59,32 @@ export default function CheckoutForm() {
   useEffect(() => {
     if (!order || order.status === "completed") return;
 
+    const orderId = order.orderId;
     const id = window.setInterval(async () => {
-      const statusRes = await getCheckoutOrderStatus(order.orderId);
+      const statusRes = await getCheckoutOrderStatus(orderId);
       if (!statusRes.ok || !statusRes.data) return;
 
-      if (statusRes.data.status !== order.status) {
-        setOrder((prev) => (prev ? { ...prev, status: statusRes.data!.status } : prev));
-      }
-    }, 12000);
+      setOrder((prev) => {
+        if (!prev || statusRes.data!.status === prev.status) return prev;
+        return { ...prev, status: statusRes.data!.status };
+      });
+    }, 5000);
 
     return () => window.clearInterval(id);
   }, [order]);
 
+  // Do not put `redirecting` in the dependency array: after setRedirecting(true) the effect
+  // would re-run, cleanup would clear the timeout, and the early return would skip scheduling again.
   useEffect(() => {
     if (order?.status !== "completed") return;
-    if (redirecting) return;
 
     setRedirecting(true);
-    const id = window.setTimeout(() => {
+    const t = window.setTimeout(() => {
       router.push("/tu-sach");
     }, 3000);
 
-    return () => window.clearTimeout(id);
-  }, [order?.status, redirecting, router]);
+    return () => window.clearTimeout(t);
+  }, [order?.status, router]);
 
   async function downloadQrCode() {
     if (!order) return;
