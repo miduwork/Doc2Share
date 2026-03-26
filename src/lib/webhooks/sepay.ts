@@ -30,13 +30,9 @@ export type SePayWebhookPayload = {
     amount_in?: number | string;
 };
 
-/** Số tiền kỳ vọng: không dùng `??` vì total_price = 0 vẫn “có giá trị” và sẽ che total_amount. */
-function resolveExpectedOrderAmount(order: { total_price?: unknown; total_amount?: unknown }): number {
-    const nTp =
-        order.total_price == null || order.total_price === "" ? NaN : Number(order.total_price);
-    const nTa =
-        order.total_amount == null || order.total_amount === "" ? NaN : Number(order.total_amount);
-    if (Number.isFinite(nTp) && nTp > 0) return Math.round(nTp);
+/** Số tiền kỳ vọng (source of truth): luôn lấy từ `orders.total_amount`. */
+function resolveExpectedOrderAmount(order: { total_amount?: unknown }): number {
+    const nTa = order.total_amount == null || order.total_amount === "" ? NaN : Number(order.total_amount);
     if (Number.isFinite(nTa) && nTa > 0) return Math.round(nTa);
     return 0;
 }
@@ -129,7 +125,7 @@ export async function handleSePayWebhook(
         if (matchedOrders.length === 0) {
             const { data: fallbackRows, error: fallbackError } = await admin
                 .from("orders")
-                .select("id, total_price, total_amount, payment_status, status")
+                .select("id, total_amount, payment_status, status")
                 .ilike("external_id", `${ref}%`)
                 .limit(2);
 
@@ -162,7 +158,6 @@ export async function handleSePayWebhook(
             expectedAmount,
             transferAmount,
             orderId: order.id,
-            total_price: (order as any).total_price,
             total_amount: (order as any).total_amount,
         });
         await logTransaction(admin, body, {
@@ -170,7 +165,7 @@ export async function handleSePayWebhook(
             order_id_prefix: orderIdPrefix,
             amount_matched: false,
             // Extra debug info in JSON
-            metadata: { expectedAmount, transferAmount, orderId: order.id, actualPrice: (order as any).total_price, actualAmount: (order as any).total_amount }
+            metadata: { expectedAmount, transferAmount, orderId: order.id, actualAmount: (order as any).total_amount }
         });
         return {
             ok: true,

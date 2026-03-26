@@ -20,19 +20,10 @@ export function createSupabaseCheckoutRepository(): CheckoutRepository {
       const supabase = await createClient();
 
       // We use the RPC because it handles auth.uid() and order_items atomicity securely in DB.
-      // But we need to ensure total_price (bridged column) is set.
       const { data, error } = await supabase.rpc("create_checkout_order", { p_document_id: documentId }).single();
       if (error || !data) throw new Error(error?.message || "Không thể tạo đơn hàng.");
 
       const row = data as RpcCheckoutRow;
-
-      // Bridged fix: ensure total_price is synced for legacy/Print integration if not already by trigger.
-      // Migration 20260322135000 added it but function might be old.
-      await supabase
-        .from("orders")
-        .update({ total_price: row.total_amount })
-        .eq("id", row.order_id)
-        .is("total_price", null);
 
       return {
         orderId: row.order_id,

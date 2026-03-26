@@ -5,7 +5,6 @@ export interface Order {
     user_id: string;
     status: OrderStatus;
     total_amount: number;
-    total_price?: number; // QR2Print bridge
     payment_status?: string; // QR2Print bridge
     customer_name?: string;
     phone_number?: string;

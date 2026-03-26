@@ -33,7 +33,6 @@ export async function createDocumentOrder(params: {
             user_id: params.userId,
             status: "pending",
             total_amount: amount,
-            total_price: amount,
             payment_status: "Chưa thanh toán",
             external_id: shortId,
             order_items: [
