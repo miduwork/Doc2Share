@@ -4,7 +4,8 @@
 -- before dropping the column.
 
 -- Override match_orders_by_id_prefix to not return total_price
-CREATE OR REPLACE FUNCTION public.match_orders_by_id_prefix(p_prefix TEXT)
+DROP FUNCTION IF EXISTS public.match_orders_by_id_prefix(TEXT);
+CREATE FUNCTION public.match_orders_by_id_prefix(p_prefix TEXT)
 RETURNS TABLE (
   id UUID,
   status order_status,
@@ -30,7 +31,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 GRANT EXECUTE ON FUNCTION public.match_orders_by_id_prefix(TEXT) TO service_role;
 
 -- Override create_checkout_order to not insert/update total_price
-CREATE OR REPLACE FUNCTION public.create_checkout_order(p_document_id UUID)
+DROP FUNCTION IF EXISTS public.create_checkout_order(UUID);
+CREATE FUNCTION public.create_checkout_order(p_document_id UUID)
 RETURNS TABLE (
   order_id UUID,
   total_amount NUMERIC,
