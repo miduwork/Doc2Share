@@ -22,30 +22,37 @@ export default async function HomePage() {
   return (
     <PublicLayout>
       {/* Hero – gradient đa lớp, blob lớn, CTA Khám phá tài liệu */}
-      {/* overflow-hidden có thể làm cắt mép dưới chữ trong animation/reflow; chỉ ẩn tràn ngang. */}
-      <section className="reveal-section relative overflow-x-hidden border-b border-line py-16 sm:py-20">
-        {/* Gradient đa lớp: primary → trắng → emerald → accent nhạt */}
-        <div
-          className="absolute inset-0 -z-10 dark:hidden"
-          style={{
-            background: [
-              "radial-gradient(ellipse 100% 80% at 20% 20%, rgba(219, 234, 254, 0.9) 0%, transparent 50%)",
-              "radial-gradient(ellipse 80% 60% at 80% 80%, rgba(209, 250, 229, 0.7) 0%, transparent 50%)",
-              "radial-gradient(ellipse 70% 70% at 60% 10%, rgba(255, 237, 213, 0.35) 0%, transparent 45%)",
-              "linear-gradient(165deg, rgb(248 250 252) 0%, rgb(255 255 255) 35%, rgb(236 253 245 / 0.6) 70%, rgb(255 247 237 / 0.4) 100%)",
-            ].join(", "),
-          }}
-        />
-        <div
-          className="absolute inset-0 -z-10 hidden dark:block"
-          style={{
-            background: [
-              "radial-gradient(ellipse 100% 80% at 20% 20%, rgba(30, 58, 138, 0.25) 0%, transparent 50%)",
-              "radial-gradient(ellipse 80% 60% at 80% 80%, rgba(6, 78, 59, 0.2) 0%, transparent 50%)",
-              "linear-gradient(165deg, rgb(2 6 23) 0%, rgb(15 23 42) 40%, rgb(15 23 42 / 0.98) 100%)",
-            ].join(", "),
-          }}
-        />
+      <section className="reveal-section relative border-b border-line py-16 sm:py-20">
+        {/* Decorative backgrounds contained in an overflow-hidden wrapper to prevent scrollbars */}
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          {/* Gradient đa lớp: primary → trắng → emerald → accent nhạt */}
+          <div
+            className="absolute inset-0 dark:hidden"
+            style={{
+              background: [
+                "radial-gradient(ellipse 100% 80% at 20% 20%, rgba(219, 234, 254, 0.9) 0%, transparent 50%)",
+                "radial-gradient(ellipse 80% 60% at 80% 80%, rgba(209, 250, 229, 0.7) 0%, transparent 50%)",
+                "radial-gradient(ellipse 70% 70% at 60% 10%, rgba(255, 237, 213, 0.35) 0%, transparent 45%)",
+                "linear-gradient(165deg, rgb(248 250 252) 0%, rgb(255 255 255) 35%, rgb(236 253 245 / 0.6) 70%, rgb(255 247 237 / 0.4) 100%)",
+              ].join(", "),
+            }}
+          />
+          <div
+            className="absolute inset-0 hidden dark:block"
+            style={{
+              background: [
+                "radial-gradient(ellipse 100% 80% at 20% 20%, rgba(30, 58, 138, 0.25) 0%, transparent 50%)",
+                "radial-gradient(ellipse 80% 60% at 80% 80%, rgba(6, 78, 59, 0.2) 0%, transparent 50%)",
+                "linear-gradient(165deg, rgb(2 6 23) 0%, rgb(15 23 42) 40%, rgb(15 23 42 / 0.98) 100%)",
+              ].join(", "),
+            }}
+          />
+          {/* Blob lớn, rõ hơn – primary, emerald, accent nhạt */}
+          <div className="absolute -top-24 -left-20 h-72 w-72 rounded-full bg-primary-300/40 blur-3xl dark:bg-primary-500/20" />
+          <div className="absolute -bottom-32 right-0 h-80 w-80 rounded-full bg-emerald-300/45 blur-3xl dark:bg-emerald-500/25" />
+          <div className="absolute bottom-1/4 left-1/3 h-48 w-48 rounded-full bg-amber-200/30 blur-3xl dark:bg-amber-500/15" />
+        </div>
+
         <div className="section-container relative z-10 text-center">
           <span className="inline-flex rounded-full border border-primary-200 bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary shadow-sm dark:border-primary-700 dark:bg-slate-900/80">
             Neo Edu Premium
@@ -77,10 +84,6 @@ export default async function HomePage() {
             />
           </div>
         </div>
-        {/* Blob lớn, rõ hơn – primary, emerald, accent nhạt */}
-        <div className="pointer-events-none absolute -top-24 -left-20 h-72 w-72 rounded-full bg-primary-300/40 blur-3xl dark:bg-primary-500/20" />
-        <div className="pointer-events-none absolute -bottom-32 right-0 h-80 w-80 rounded-full bg-emerald-300/45 blur-3xl dark:bg-emerald-500/25" />
-        <div className="pointer-events-none absolute bottom-1/4 left-1/3 h-48 w-48 rounded-full bg-amber-200/30 blur-3xl dark:bg-amber-500/15" />
       </section>
 
       {/* Document grid */}
