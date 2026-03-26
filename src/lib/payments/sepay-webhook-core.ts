@@ -10,6 +10,9 @@ export type SePayPayload = {
   transferType?: string;
   transferAmount?: number | string;
   amount?: number | string;
+  /** Một số bản ghi SePay/MB gửi snake_case */
+  transfer_amount?: number | string;
+  amount_in?: number | string;
   referenceCode?: string;
 };
 
@@ -72,10 +75,9 @@ export function isIncomingTransfer(payload: SePayPayload): boolean {
   return String(payload.transferType ?? "").toLowerCase() === "in";
 }
 
-export function extractAmount(payload: SePayPayload): number | null {
-  const v = payload.transferAmount ?? payload.amount;
+function parseSingleAmountValue(v: unknown): number | null {
   if (v == null) return null;
-  if (typeof v === "number") return Math.round(v);
+  if (typeof v === "number" && Number.isFinite(v)) return Math.round(v);
   if (typeof v === "string") {
     const cleaned = v.replace(/[^\d.,]/g, "");
     if (!cleaned) return null;
@@ -87,6 +89,25 @@ export function extractAmount(payload: SePayPayload): number | null {
     }
     const n = parseFloat(cleaned.replace(/,/g, "."));
     return isFinite(n) ? Math.round(n) : null;
+  }
+  return null;
+}
+
+/**
+ * Lấy số tiền giao dịch từ payload. SePay/MB có thể dùng camelCase hoặc snake_case.
+ */
+export function extractAmount(payload: SePayPayload & Record<string, unknown>): number | null {
+  const candidates: unknown[] = [
+    payload.transferAmount,
+    payload.amount,
+    payload.transfer_amount,
+    payload.amount_in,
+    (payload as Record<string, unknown>).transferInAmount,
+    (payload as Record<string, unknown>).value,
+  ];
+  for (const c of candidates) {
+    const n = parseSingleAmountValue(c);
+    if (n != null && n > 0) return n;
   }
   return null;
 }

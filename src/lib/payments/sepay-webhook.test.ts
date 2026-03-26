@@ -110,6 +110,11 @@ test("extractAmount returns VND number", () => {
   assert.equal(extractAmount({ transferAmount: 99.5 }), 100);
 });
 
+test("extractAmount reads snake_case transfer_amount (SePay/MB)", () => {
+  assert.equal(extractAmount({ transfer_amount: 2000 } as SePayPayload), 2000);
+  assert.equal(extractAmount({ transferAmount: 0, transfer_amount: 2000 } as SePayPayload), 2000);
+});
+
 test("extractAmount returns null for missing or invalid", () => {
   assert.equal(extractAmount({}), null);
   assert.equal(extractAmount({ transferAmount: "x" } as unknown as SePayPayload), null);

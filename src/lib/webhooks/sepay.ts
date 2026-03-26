@@ -26,7 +26,20 @@ export type SePayWebhookPayload = {
     reference_code?: string;
     description?: string;
     transaction_id?: string;
+    transfer_amount?: number | string;
+    amount_in?: number | string;
 };
+
+/** Số tiền kỳ vọng: không dùng `??` vì total_price = 0 vẫn “có giá trị” và sẽ che total_amount. */
+function resolveExpectedOrderAmount(order: { total_price?: unknown; total_amount?: unknown }): number {
+    const nTp =
+        order.total_price == null || order.total_price === "" ? NaN : Number(order.total_price);
+    const nTa =
+        order.total_amount == null || order.total_amount === "" ? NaN : Number(order.total_amount);
+    if (Number.isFinite(nTp) && nTp > 0) return Math.round(nTp);
+    if (Number.isFinite(nTa) && nTa > 0) return Math.round(nTa);
+    return 0;
+}
 
 export type SePayHandleResult =
     | { ok: true; status: 200; message?: string }
@@ -139,8 +152,9 @@ export async function handleSePayWebhook(
     }
 
     const orderIdPrefix = orderIdPrefixMatch!;
-    const expectedAmount = Number((order as any).total_price ?? (order as any).total_amount ?? 0);
-    const amountMatched = transferAmount === expectedAmount && expectedAmount > 0;
+    const expectedAmount = resolveExpectedOrderAmount(order);
+    const amountMatched =
+        expectedAmount > 0 && Math.round(transferAmount) === expectedAmount;
 
     if (!amountMatched) {
         console.error("Webhook SePay: amount mismatch", {
