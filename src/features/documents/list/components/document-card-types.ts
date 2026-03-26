@@ -22,6 +22,8 @@ export type DocumentListCardProps = {
   soldCount?: number;
   ratingCount?: number;
   avgRating?: number | null;
+  /** User đã có quyền đọc (đã mua) — hiển thị tag Đã mua */
+  isPurchased?: boolean;
   /** Badge góc trên ảnh — đồng bộ với DocumentCard */
   topBadge?: "premium" | "free" | false | ReactNode;
 };

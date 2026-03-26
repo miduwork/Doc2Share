@@ -1,4 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseAnonClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
+import { Category } from "@/lib/types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -13,6 +16,32 @@ export type DocumentsListFilters = {
   q?: string;
   sort?: DocumentsListSort | string;
 };
+
+/**
+ * Caches the categories list for 24 hours.
+ */
+export async function getCachedCategories() {
+  return unstable_cache(
+    async () => {
+      // Không dùng createClient() SSR (cookies) trong unstable_cache — Next 14 cấm.
+      const supabase = createSupabaseAnonClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data } = await supabase
+        .from("categories")
+        .select("id, name, type, position")
+        .order("type")
+        .order("position", { ascending: true });
+      return (data as Category[]) ?? [];
+    },
+    ["categories-list"],
+    {
+      revalidate: 86400, // 24 hours
+      tags: ["categories"],
+    }
+  )();
+}
 
 export async function getDocumentsListData(
   supabase: SupabaseServerClient,
@@ -47,11 +76,8 @@ export async function getDocumentsListData(
 
   const { data: docs, count } = await query;
 
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("id, name, type, position")
-    .order("type")
-    .order("position", { ascending: true });
+  // Use cached categories to avoid redundant DB queries per document list request
+  const categories = await getCachedCategories();
 
   return { docs, categories, totalCount: count ?? 0 };
 }

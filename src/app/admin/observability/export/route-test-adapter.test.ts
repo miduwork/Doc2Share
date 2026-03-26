@@ -79,7 +79,7 @@ test("test adapter maintenance handler returns csv on success", async () => {
 test("test adapter alerts handler returns 200 when signed share is authorized", async () => {
   const adapter = createRouteTestAdapter({
     parseExportRequest: () => ({
-      payload: { window: "24h", severity: "error", source: "edge.payment_webhook", event_type: "all", share_exp: "9999999999" },
+      payload: { window: "24h", severity: "error", source: "api.webhook_sepay", event_type: "all", share_exp: "9999999999" },
       shareSig: "signed-ok",
       limit: 50,
       sinceIso: "2026-01-01T00:00:00.000Z",
@@ -91,7 +91,7 @@ test("test adapter alerts handler returns 200 when signed share is authorized", 
     createSupabaseMock("observability_events", [
       {
         created_at: "2026-01-01T00:00:00.000Z",
-        source: "edge.payment_webhook",
+        source: "api.webhook_sepay",
         event_type: "failed",
         severity: "error",
         status_code: 500,
@@ -180,7 +180,7 @@ test("test adapter alerts csv escapes commas and quotes", async () => {
     createSupabaseMock("observability_events", [
       {
         created_at: "2026-01-01T00:00:00.000Z",
-        source: "edge.payment_webhook",
+        source: "api.webhook_sepay",
         event_type: 'evt,"x"',
         severity: "error",
         status_code: 500,

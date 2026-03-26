@@ -44,7 +44,7 @@
 | Features | 6 module (admin, auth, checkout, dashboard, documents, layout) |
 | Domain modules | 5 (checkout, document-upload, document-pipeline, documents, observability) |
 | Migrations | 35 files |
-| Edge Functions | 2 (payment-webhook, get-secure-link) |
+| Edge Functions | 2 (get-secure-link, resolve-ott); webhook SePay qua Next `/api/webhook/sepay` |
 | Test files | 40 files (34 unit + 6 integration) |
 | E2E tests | 4 specs |
 | Scripts | 9 helper scripts |
@@ -161,7 +161,7 @@ Luồng thanh toán được thiết kế rất bài bản:
 5. **Idempotency** qua `register_webhook_event` (hash-based dedup)
 
 > [!NOTE]
-> Sync mechanism (`npm run sync:sepay`, `npm run sync:secure-access`) để giữ Node ↔ Edge logic đồng nhất là giải pháp sáng tạo, nhưng có risk khi dev quên chạy sync. Nên thêm CI check hoặc pre-commit hook.
+> Sync mechanism (`npm run sync:secure-access`) giữ Node ↔ Edge cho **get-secure-link**; SePay core chỉ còn trên Node (`sepay-webhook-core.ts`). CI `check:sync` vẫn kiểm tra secure-access.
 
 ### 4.3 Document Upload & Pipeline
 
@@ -271,7 +271,7 @@ Logic bảo mật đọc tài liệu rất chặt chẽ:
 ### 7.3 Test script đặc biệt
 
 - `npm run lint:auth-boundary` – kiểm tra không import `signOut` ở client. Rất sáng tạo.
-- `npm run sync:sepay` / `npm run sync:secure-access` – sync logic Node ↔ Edge. Cần CI verify.
+- `npm run sync:secure-access` – sync secure-access Node ↔ Edge. Cần CI verify (`npm run check:sync`).
 
 ---
 

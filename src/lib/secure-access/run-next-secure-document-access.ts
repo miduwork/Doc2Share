@@ -21,6 +21,7 @@ import {
   evaluateApiSessionBinding,
   toSessionBindingErrorMessage,
 } from "@/lib/auth/session-binding-adapter";
+import { persistDeviceLogRow } from "@/lib/auth/single-session/persistDeviceLogRow";
 import { issueWatermark } from "@/lib/watermark/watermark-issuer";
 import type { WatermarkDisplayPayload } from "@/lib/watermark/watermark-contract";
 
@@ -309,17 +310,14 @@ export async function runNextSecureDocumentAccess({
     }
     const isNewDevice = !deviceIds.some((id) => id === deviceId);
     if (isNewDevice) {
-      await supabase.from("device_logs").upsert(
-        {
-          user_id: user.id,
-          device_id: deviceId,
-          device_info: { userAgent: req.headers.get("user-agent"), ip },
-          hardware_hash: hardwareHash || null,
-          hardware_fingerprint: body?.hardware_fingerprint || null,
-          last_login: new Date().toISOString(),
-        },
-        { onConflict: "user_id,device_id" }
-      );
+      await persistDeviceLogRow(supabase, {
+        user_id: user.id,
+        device_id: deviceId,
+        device_info: { userAgent: req.headers.get("user-agent"), ip },
+        hardware_hash: hardwareHash || null,
+        hardware_fingerprint: body?.hardware_fingerprint || null,
+        last_login: new Date().toISOString(),
+      });
     }
 
     const sessionGate = evaluateApiSessionBinding(activeSession?.device_id, deviceId, isSuperAdmin);

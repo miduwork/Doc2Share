@@ -10,14 +10,13 @@ Tài liệu vận hành: xử lý sự cố thanh toán/webhook, user bị khóa
 |------|--------|--------|
 | `NEXT_PUBLIC_SUPABASE_URL` | App (client + server) | URL project Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | App | Anon key (public) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server, Edge Functions | Service role (bí mật; không đưa ra client) |
-| `WEBHOOK_SEPAY_API_KEY` | Edge Function `payment-webhook` | Key xác thực webhook SePay (`Authorization: Apikey <key>`) |
-| `PAYMENT_PROVIDER` | Edge Function | `sepay` (mặc định) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server (Next.js API, Edge Functions nếu dùng) | Service role (bí mật; không đưa ra client) |
+| `WEBHOOK_SEPAY_API_KEY` | Next.js (`POST /api/webhook/sepay`) | Key xác thực webhook SePay (`Authorization: Apikey <key>`) |
 | `VIETQR_*` | App (checkout) | Bank BIN, số TK, tên, template VietQR |
 | `DIAGNOSTICS_SHARE_SECRET` | App (admin export) | Secret ký link export alerts/diagnostics (tùy chọn) |
 | `INTERNAL_CRON_SECRET` | App (API cron) | Secret bảo vệ `/api/internal/document-pipeline/run` (tùy chọn) |
 
-Edge Functions cần cấu hình Secrets trong Supabase Dashboard → Project Settings → Edge Functions.
+Edge Functions (get-secure-link, …) cần Secrets trong Supabase Dashboard nếu bạn deploy chúng. Webhook SePay **không** chạy trên Edge — chỉ cần biến trên host Next.js.
 
 ---
 
@@ -27,17 +26,17 @@ Edge Functions cần cấu hình Secrets trong Supabase Dashboard → Project Se
 
 - **Supabase**: Bảng `webhook_events` (provider, event_id, status, error_message, last_seen_at). Chỉ super_admin xem được (RLS).
 - **Admin**: Trang **Webhooks** (danh sách event), **Observability** (events 24h, export alerts).
-- **Edge Function logs**: Supabase Dashboard → Edge Functions → payment-webhook → Logs.
+- **Next.js / hosting**: log server cho route `POST /api/webhook/sepay` (Vercel Logs, PM2, v.v.).
 
 ### 2.2 Mã lỗi và cách xử lý
 
 | HTTP / Tình huống | Ý nghĩa | Hành động |
 |-------------------|---------|-----------|
-| **401 Unauthorized** | Header `Authorization: Apikey <key>` sai hoặc thiếu | Kiểm tra SePay cấu hình đúng URL webhook và API key; so sánh với `WEBHOOK_SEPAY_API_KEY` trong Secrets. |
+| **401 Unauthorized** | Header `Authorization: Apikey <key>` sai hoặc thiếu | Kiểm tra SePay: URL webhook trỏ tới `https://<domain>/api/webhook/sepay`; API key khớp `WEBHOOK_SEPAY_API_KEY` trên **môi trường Next.js**. |
 | **400 Invalid JSON / Amount mismatch** | Body không phải JSON, hoặc số tiền chuyển không khớp đơn | Kiểm tra payload SePay (transferAmount); so sánh với `orders.total_amount` (VND). Nếu user chuyển sai số tiền, hướng dẫn user chuyển lại đúng số tiền và nội dung. |
 | **409 Webhook payload mismatch** | Cùng event_id nhưng payload hash khác (replay khác nội dung) | Thường do SePay gửi trùng event_id với payload đổi. Xem `webhook_events.error_message = 'payload_hash_mismatch'`. Có thể bỏ qua nếu đơn đã completed; nếu chưa, kiểm tra bên SePay. |
 | **409 Ambiguous order match** | Nhiều order trùng ref (external_id / content) | Kiểm tra `orders.external_id` và refs trích từ webhook; đảm bảo mỗi đơn có ref duy nhất. |
-| **500** | Lỗi server (RPC, DB, exception) | Xem Edge Function logs và `observability_events` (source `edge.payment_webhook`). Kiểm tra RPC `register_webhook_event`, `complete_order_and_grant_permissions`, `complete_webhook_event` có lỗi hay không. |
+| **500** | Lỗi server (RPC, DB, exception) | Xem log Next.js cho `/api/webhook/sepay` và `observability_events` (source `api.webhook_sepay`). Kiểm tra RPC `register_webhook_event`, `complete_order_and_grant_permissions`, `complete_webhook_event`. |
 
 ### 2.3 User đã chuyển tiền nhưng chưa mở khóa
 
@@ -92,9 +91,8 @@ Edge Functions cần cấu hình Secrets trong Supabase Dashboard → Project Se
 
 | Script | Mục đích | Khi nào chạy |
 |--------|----------|--------------|
-| `sync-sepay-core.mjs` | Đồng bộ logic SePay từ `src/lib/payments/sepay-webhook-core.ts` sang Edge Function `supabase/functions/payment-webhook/providers/sepay-core.ts`. | **Chạy `npm run sync:sepay`** sau mỗi lần sửa file `sepay-webhook-core.ts` (parse payload, extractOrderReferences, resolveEventId, normalizeOrderRef, isIncomingTransfer, extractAmount). Sau khi chạy, deploy lại Edge Function: `supabase functions deploy payment-webhook`. |
-
----
+| `check-sync-drift.mjs` | CI: so khớp `secure-access-core` Node ↔ Edge (`get-secure-link`). | `npm run check:sync` |
+| `sync-secure-access-core.mjs` | Đồng bộ `src/lib/secure-access/secure-access-core.ts` → Edge `get-secure-link`. | Sau khi sửa core; rồi `supabase functions deploy get-secure-link` |
 
 ## 5. Cron và maintenance
 
@@ -130,14 +128,14 @@ Edge Functions cần cấu hình Secrets trong Supabase Dashboard → Project Se
 
 ### 7.1 SLO tối thiểu (điều chỉnh theo môi trường)
 
-- **Edge `payment-webhook`**: Theo dõi tỷ lệ HTTP **401/400/500** trong Supabase → Edge Functions → Logs; mục tiêu **5xx gần 0** sau khi loại trừ lỗi cấu hình SePay.
-- **Độ trễ**: Latency Edge (request_id trong response header/body) — đặt ngưỡng cảnh báo nếu p95 vượt quá (ví dụ > 10s) để phát hiện DB/RPC chậm.
+- **Webhook SePay (`/api/webhook/sepay`)**: Theo dõi **401/400/500** trên log hosting; mục tiêu **5xx gần 0** sau khi loại trừ lỗi cấu hình SePay.
+- **Độ trễ**: Latency handler webhook và RPC — đặt ngưỡng cảnh báo nếu p95 vượt quá (ví dụ > 10s).
 - **App**: Nếu có log tập trung (hosting), theo dõi lỗi 5xx trên route API và thời gian phản hồi trang chủ/checkout.
 
 ### 7.2 Checklist rà soát (hàng quý hoặc sau thay đổi RLS/migration)
 
 - **RLS**: Đối chiếu policy với `admin_role` và bảng nhạy cảm (`webhook_events`, `security_logs`) — super_admin vs support_agent như thiết kế.
-- **Secrets**: `WEBHOOK_SEPAY_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DIAGNOSTICS_SHARE_SECRET`, `INTERNAL_CRON_SECRET` chỉ trong Supabase Secrets / server env; **không** đưa vào `NEXT_PUBLIC_*`.
+- **Secrets**: `WEBHOOK_SEPAY_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DIAGNOSTICS_SHARE_SECRET`, `INTERNAL_CRON_SECRET` chỉ trong env server (Next.js / Edge tùy chỗ dùng); **không** đưa vào `NEXT_PUBLIC_*`.
 - **Client**: `NEXT_PUBLIC_SUPABASE_URL` và `NEXT_PUBLIC_SUPABASE_ANON_KEY` là public by design; không dùng prefix này cho khóa nhạy cảm.
 - **Headers / rate limit**: Luồng secure link và giới hạn thiết bị — xem mục webhook và README; đối chiếu khi đổi hosting (CDN, WAF).
 
@@ -157,7 +155,7 @@ Checklist release và nâng cấp dependency: [`docs/RELEASE-CHECKLIST.md`](./do
 
 - **Supabase Dashboard**: [https://supabase.com/dashboard](https://supabase.com/dashboard) → chọn project.
 - **Database → Tables**: `orders`, `order_items`, `webhook_events`, `permissions`, `profiles`, `security_logs`, `observability_events`, `backend_maintenance_runs`.
-- **Edge Functions → payment-webhook**: Logs, Invoke (test).
+- **Hosting**: Logs cho `POST /api/webhook/sepay` khi cần debug thanh toán.
 - **Authentication**: Users, Policies.
 - **README**: [README.md](./README.md) – setup, payment flow, cấu trúc.
 - **Testing**: [TESTING.md](./TESTING.md) – unit/integration tests, env cho test.

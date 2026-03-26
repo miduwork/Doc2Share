@@ -9,6 +9,8 @@ export interface ImageCardProps {
   imageUrl: string | null;
   alt: string;
   topBadge?: ReactNode;
+  /** Góc trên ảnh: purchased = tag Đã mua (màu emerald), default = Nổi bật / Miễn phí */
+  topBadgeTone?: "default" | "purchased";
   bottomBadge?: ReactNode;
   aspectClass?: string;
   className?: string;
@@ -23,6 +25,7 @@ export default function ImageCard({
   imageUrl,
   alt,
   topBadge,
+  topBadgeTone = "default",
   bottomBadge,
   aspectClass = "aspect-[4/3]",
   className = "",
@@ -71,7 +74,14 @@ export default function ImageCard({
       <div className="doc-card-cover-hover-overlay" aria-hidden />
       <div className="absolute inset-0 rounded-t-2xl bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
       {topBadge != null ? (
-        <span className="absolute left-3 top-3 rounded-lg border border-white/40 bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary shadow-sm backdrop-blur dark:border-white/20 dark:bg-slate-900/90 dark:text-primary-300">
+        <span
+          className={
+            topBadgeTone === "purchased"
+              ? "absolute left-3 top-3 rounded-lg border border-emerald-600/50 bg-emerald-600 px-2.5 py-1 text-[11px] font-bold tracking-wide text-white shadow-sm backdrop-blur dark:border-emerald-400/35 dark:bg-emerald-500"
+              : "absolute left-3 top-3 rounded-lg border border-white/40 bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary shadow-sm backdrop-blur dark:border-white/20 dark:bg-slate-900/90 dark:text-primary-300"
+          }
+          aria-label={topBadgeTone === "purchased" ? "Bạn đã mua tài liệu này" : undefined}
+        >
           {topBadge}
         </span>
       ) : null}

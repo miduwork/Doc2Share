@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -111,10 +111,10 @@ export default function DashboardClient({
     router.push(qs ? `/tu-sach?${qs}` : "/tu-sach");
   };
 
-  const syncSessionBinding = useCallback(async () => {
+  const syncSessionBinding = useCallback(async (): Promise<boolean> => {
     try {
       const dId = getDeviceId();
-      const { signalsSummary, hardwareHash } = await collectHardwareFingerprint();
+      const { hardwareHash } = await collectHardwareFingerprint();
       const res = await registerDeviceAndSession(dId, undefined, hardwareHash);
 
       if (res.ok && res.data?.recoveredDeviceId) {
@@ -123,9 +123,12 @@ export default function DashboardClient({
 
       if (!res.ok) {
         console.error("Dashboard session binding failed:", res.error);
+        return false;
       }
+      return true;
     } catch (e) {
       console.error("syncSessionBinding err", e);
+      return false;
     }
   }, []);
 
@@ -137,8 +140,10 @@ export default function DashboardClient({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      await syncSessionBinding();
-      if (!hasSessionCookie) router.refresh();
+      const ok = await syncSessionBinding();
+      // Refetch RSC sau khi client ghi device_logs / phiên — trước đây chỉ refresh khi
+      // !hasSessionCookie nên danh sách thiết bị từ server không bao giờ cập nhật.
+      if (ok) router.refresh();
     })();
   }, [hasSessionCookie, supabase, router, syncSessionBinding]);
 

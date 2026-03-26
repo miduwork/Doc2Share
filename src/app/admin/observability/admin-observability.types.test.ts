@@ -22,7 +22,7 @@ test("preset defaults are mapped correctly", () => {
   const webhookErrors = getPresetDefaults("webhook-errors");
   assert.equal(webhookErrors.window, "24h");
   assert.equal(webhookErrors.severity, "error");
-  assert.equal(webhookErrors.source, "edge.payment_webhook");
+  assert.equal(webhookErrors.source, "api.webhook_sepay");
 
   const secureLinkBlocked = getPresetDefaults("secure-document-access-blocked");
   assert.equal(secureLinkBlocked.eventType, "blocked");

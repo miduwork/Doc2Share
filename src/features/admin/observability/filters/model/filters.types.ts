@@ -17,6 +17,7 @@ export const OBSERVABILITY_SOURCE_OPTIONS = [
   "db.alerts",
   "db.document_lifecycle",
   "db.maintenance",
+  "api.webhook_sepay",
   "edge.payment_webhook",
   "edge.get_secure_link",
 ] as const;
@@ -96,7 +97,7 @@ type ObservabilityPresetDefaults = Pick<
 
 export const PRESET_DEFAULTS_MAP: Record<ObservabilityPreset, ObservabilityPresetDefaults> = {
   incident: { window: "24h", severity: "error", source: "all", eventType: "all" },
-  "webhook-errors": { window: "24h", severity: "error", source: "edge.payment_webhook", eventType: "all" },
+  "webhook-errors": { window: "24h", severity: "error", source: "api.webhook_sepay", eventType: "all" },
   "secure-document-access-blocked": { window: "24h", severity: "all", source: "edge.get_secure_link", eventType: "blocked" },
   "reader-watermark-degraded": {
     window: "24h",

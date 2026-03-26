@@ -18,7 +18,7 @@ src/
 │   │   ├── document-pipeline/
 │   │   ├── documents/      # Admin documents (CMS)
 │   │   └── observability/
-│   ├── payments/           # Checkout providers + SePay webhook (Node mirror for tests)
+│   ├── payments/           # Checkout providers + SePay webhook core (parse payload; dùng bởi lib/webhooks/sepay)
 │   ├── secure-access/      # secure-access-core: quy tắc chung đọc tài liệu (Next + Edge sync)
 │   ├── admin/              # Guards, capability map (guards-core)
 │   ├── supabase/           # Server/client/service-role, middleware
@@ -27,7 +27,7 @@ src/
 │   └── ...
 supabase/
 ├── migrations/
-├── functions/              # Edge (payment-webhook, get-secure-link)
+├── functions/              # Edge (get-secure-link, resolve-ott)
 └── scripts/
 ```
 
@@ -44,7 +44,7 @@ supabase/
 2. **Đăng ký**: Thêm instance vào `providers` trong `src/lib/payments/providers/index.ts`; thêm id vào `ALLOWED_PAYMENT_PROVIDER_IDS`.
 3. **Cấu hình**: Đặt `PAYMENT_PROVIDER=<id>` (env). Nếu id không nằm trong allowlist, dev sẽ log warning và fallback về `sepay`.
 
-Webhook (Edge) tách biệt: thêm `WebhookProvider<Payload>` trong `supabase/functions/payment-webhook/providers/` và đăng ký trong `providers/index.ts` của Edge; đồng thời set `PAYMENT_PROVIDER` cho Edge Function.
+Xác nhận thanh toán tự động: **SePay** gọi `POST /api/webhook/sepay` (Next.js, `src/lib/webhooks/sepay.ts`). Mở rộng provider khác: thêm handler/route tương ứng hoặc mở rộng `handleSePayWebhook` / core parse nếu cùng định dạng.
 
 ### 2.2 Thêm admin role
 
@@ -84,7 +84,7 @@ Client: `if (result.ok) { ... result.data } else { ... result.error }`. `loginWi
 | `POST /api/secure-link` | Cookie | Trả JSON `{ url }` signed URL (60s); cùng quy tắc thiết bị / phiên / quyền; dùng chung `src/lib/secure-access/secure-access-core.ts`. |
 | Edge `get-secure-link` | `Authorization: Bearer <JWT>` | Client ngoài web (mobile, tích hợp); có thể tạo `active_sessions` nếu chưa có; cập nhật `usage_stats`. |
 
-**Nguồn sự thật cho quy tắc nghiệp vụ** (giới hạn thiết bị, quyền, ngưỡng rate limit mặc định): [`src/lib/secure-access/secure-access-core.ts`](src/lib/secure-access/secure-access-core.ts). Sau khi sửa file này, chạy **`npm run sync:secure-access`** để đồng bộ sang Edge (`supabase/functions/get-secure-link/secure-access-core.ts`), rồi `supabase functions deploy get-secure-link`. Cùng mô hình với SePay (`sync:sepay`).
+**Nguồn sự thật cho quy tắc nghiệp vụ** (giới hạn thiết bị, quyền, ngưỡng rate limit mặc định): [`src/lib/secure-access/secure-access-core.ts`](src/lib/secure-access/secure-access-core.ts). Sau khi sửa file này, chạy **`npm run sync:secure-access`** để đồng bộ sang Edge (`supabase/functions/get-secure-link/secure-access-core.ts`), rồi `supabase functions deploy get-secure-link`.
 
 Kế hoạch và vận hành chi tiết: [`docs/SECURE-ACCESS-SYNC.md`](docs/SECURE-ACCESS-SYNC.md).
 

@@ -20,6 +20,15 @@ export default function DiscoveryFilters({ grades, subjects, exams, basePath, va
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  /** Lớp 1–12 theo thứ tự position (lưới 3×4: 1–3, 4–6, 7–9, 10–12) */
+  const sortedGrades = [...grades].sort((a, b) => a.position - b.position);
+
+  /** Sidebar: nút thấp, một dòng chữ (override min-h filter-pill mặc định) */
+  const pillCompactRow =
+    "!min-h-0 h-8 px-2 py-0 text-xs font-medium leading-none whitespace-nowrap";
+  const pillGrade = `${pillCompactRow} w-full justify-center`;
+  const pillWrapRow = `${pillCompactRow} min-w-0 max-w-[11rem] shrink truncate`;
+
   const update = useCallback(
     (key: string, value: string | null) => {
       const { search } = applyDiscoveryFilterUpdate(searchParams, key, value);
@@ -33,7 +42,7 @@ export default function DiscoveryFilters({ grades, subjects, exams, basePath, va
   const examId = searchParams.get("exam") || "";
   const hasFilter = Boolean(gradeId || subjectId || examId);
 
-  const pill = (key: string, value: string, label: string) => {
+  const pill = (key: string, value: string, label: string, extraClassName = "") => {
     const isActive =
       (key === "grade" && gradeId === value) ||
       (key === "subject" && subjectId === value) ||
@@ -43,7 +52,7 @@ export default function DiscoveryFilters({ grades, subjects, exams, basePath, va
         type="button"
         key={`${key}-${value}`}
         onClick={() => update(key, value || null)}
-        className={isActive ? "filter-pill filter-pill-active" : "filter-pill"}
+        className={`${isActive ? "filter-pill filter-pill-active" : "filter-pill"} ${extraClassName}`.trim()}
       >
         {label}
       </button>
@@ -74,24 +83,24 @@ export default function DiscoveryFilters({ grades, subjects, exams, basePath, va
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
             Khối lớp
           </h3>
-          <div className="flex flex-wrap gap-2">
-            {grades.map((g) => pill("grade", String(g.id), g.name))}
+          <div className="grid grid-cols-3 gap-1.5">
+            {sortedGrades.map((g) => pill("grade", String(g.id), g.name, pillGrade))}
           </div>
         </div>
         <div>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
             Môn học
           </h3>
-          <div className="flex flex-wrap gap-2">
-            {subjects.map((s) => pill("subject", String(s.id), s.name))}
+          <div className="flex flex-wrap gap-1.5">
+            {subjects.map((s) => pill("subject", String(s.id), s.name, pillWrapRow))}
           </div>
         </div>
         <div>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
             Mục tiêu / Kỳ thi
           </h3>
-          <div className="flex flex-wrap gap-2">
-            {exams.map((e) => pill("exam", String(e.id), e.name))}
+          <div className="flex flex-wrap gap-1.5">
+            {exams.map((e) => pill("exam", String(e.id), e.name, pillWrapRow))}
           </div>
         </div>
       </div>
@@ -114,7 +123,7 @@ export default function DiscoveryFilters({ grades, subjects, exams, basePath, va
             aria-label="Chọn khối lớp"
           >
             <option value="">Tất cả</option>
-            {grades.map((g) => (
+            {sortedGrades.map((g) => (
               <option key={g.id} value={String(g.id)}>
                 {g.name}
               </option>

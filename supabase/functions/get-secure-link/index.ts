@@ -65,6 +65,31 @@ function ottExpirySeconds(): number {
   );
 }
 
+/** Insert hoặc cập nhật device_logs — không dùng upsert/onConflict (cần UNIQUE khớp trên DB). */
+async function persistDeviceLogRowEdge(
+  supabase: ReturnType<typeof createClient>,
+  row: {
+    user_id: string;
+    device_id: string;
+    device_info: Record<string, unknown>;
+    last_login: string;
+  }
+) {
+  const { data: existing } = await supabase
+    .from("device_logs")
+    .select("id")
+    .eq("user_id", row.user_id)
+    .eq("device_id", row.device_id)
+    .maybeSingle();
+  if (existing?.id) {
+    return supabase
+      .from("device_logs")
+      .update({ device_info: row.device_info, last_login: row.last_login })
+      .eq("id", existing.id);
+  }
+  return supabase.from("device_logs").insert(row);
+}
+
 serve(async (req) => {
   const startedAt = Date.now();
   const requestId = req.headers.get("x-request-id") || crypto.randomUUID();
@@ -245,15 +270,12 @@ serve(async (req) => {
     }
     const isNewDevice = !deviceIds.some((id) => id === device_id);
     if (isNewDevice) {
-      await supabase.from("device_logs").upsert(
-        {
-          user_id: user.id,
-          device_id,
-          device_info: { user_agent: req.headers.get("user-agent") ?? "" },
-          last_login: new Date().toISOString(),
-        },
-        { onConflict: "user_id,device_id" }
-      );
+      await persistDeviceLogRowEdge(supabase, {
+        user_id: user.id,
+        device_id,
+        device_info: { user_agent: req.headers.get("user-agent") ?? "" },
+        last_login: new Date().toISOString(),
+      });
     }
 
     const isAdminCanReadAny = computeIsAdminCanReadAny(profile);

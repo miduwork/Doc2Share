@@ -22,9 +22,6 @@ export default function CheckoutForm() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [checking, setChecking] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [justCheckedPending, setJustCheckedPending] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
 
   const loadCheckout = useCallback(async () => {
@@ -86,36 +83,6 @@ export default function CheckoutForm() {
     return () => window.clearTimeout(id);
   }, [order?.status, redirecting, router]);
 
-  async function checkPaymentNow() {
-    if (!order) return;
-    setJustCheckedPending(false);
-    setChecking(true);
-    const statusRes = await getCheckoutOrderStatus(order.orderId);
-    setChecking(false);
-
-    if (!statusRes.ok) {
-      setError(statusRes.error);
-      return;
-    }
-
-    if (statusRes.data) {
-      const newStatus = statusRes.data.status;
-      setOrder((prev) => (prev ? { ...prev, status: newStatus } : prev));
-      if (newStatus === "pending") setJustCheckedPending(true);
-    }
-  }
-
-  async function copyTransferContent() {
-    if (!order) return;
-    try {
-      await navigator.clipboard.writeText(order.transferContent);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      setError("Không thể sao chép nội dung chuyển khoản.");
-    }
-  }
-
   async function downloadQrCode() {
     if (!order) return;
     try {
@@ -167,19 +134,6 @@ export default function CheckoutForm() {
               <p className="text-muted">
                 Nội dung CK: <span className="font-mono">{order.transferContent}</span>
               </p>
-              <div className="mt-4 flex flex-col gap-2">
-                <button type="button" className="btn-secondary w-full" onClick={copyTransferContent}>
-                  {copied ? "Đã sao chép" : "Copy nội dung CK"}
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary w-full"
-                  onClick={checkPaymentNow}
-                  disabled={checking || order.status === "completed"}
-                >
-                  {checking ? "Đang kiểm tra..." : order.status === "completed" ? "Đã thanh toán" : "Đã chuyển khoản – Kiểm tra ngay"}
-                </button>
-              </div>
               <p className="mt-3 text-xs text-muted">
                 Trạng thái đơn:{" "}
                 <span
@@ -189,16 +143,6 @@ export default function CheckoutForm() {
                   {order.status}
                 </span>
               </p>
-              {order.status !== "completed" && (
-                <p className="mt-1 text-xs text-muted">
-                  Tự động kiểm tra mỗi 12 giây. Bạn cũng có thể bấm “Kiểm tra ngay”.
-                </p>
-              )}
-              {justCheckedPending && order.status === "pending" && (
-                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400" role="status">
-                  Chưa nhận được thanh toán. Vui lòng chuyển khoản đúng số tiền và nội dung CK rồi bấm kiểm tra lại.
-                </p>
-              )}
               <div aria-live="polite" aria-atomic="true" className="sr-only">
                 {order.status === "completed"
                   ? redirecting
@@ -234,21 +178,12 @@ export default function CheckoutForm() {
                 height={280}
                 className="mx-auto block w-full max-w-[280px] rounded-xl border border-line bg-surface p-2"
               />
-              <p className="text-xs text-muted">
-                Quét mã VietQR bằng app ngân hàng để thanh toán. Hệ thống sẽ mở quyền sau khi webhook xác nhận giao dịch.
-              </p>
               <button type="button" className="btn-secondary w-full" onClick={downloadQrCode}>
                 Tải mã QR
               </button>
             </div>
           </div>
         )}
-
-        <div className="content-prose mt-6 border-t border-line pt-4">
-          <Link href="/cua-hang" className="text-sm text-muted transition hover:text-primary">
-            ← Quay lại cửa hàng
-          </Link>
-        </div>
       </div>
     </div>
   );

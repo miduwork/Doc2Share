@@ -132,6 +132,30 @@ function buildActiveFilterChips(
   return chips;
 }
 
+async function getPurchasedDocumentIdsForCurrentUser(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  docIds: string[]
+): Promise<Set<string>> {
+  if (docIds.length === 0) return new Set();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return new Set();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("permissions")
+    .select("document_id, expires_at")
+    .eq("user_id", user.id)
+    .in("document_id", docIds);
+  if (error || !data) return new Set();
+  const set = new Set<string>();
+  for (const row of data) {
+    const r = row as { document_id: string; expires_at: string | null };
+    if (r.expires_at == null || r.expires_at > now) set.add(r.document_id);
+  }
+  return set;
+}
+
 export default async function TaiLieuPage({
   searchParams,
 }: {
@@ -162,20 +186,14 @@ export default async function TaiLieuPage({
   const docIds = (docs ?? []).map((d) => d.id);
   const { reviewStats, soldStats } = await getCachedDocumentsListStats(docIds);
 
+  const supabase = await createClient();
+  const purchasedIds = await getPurchasedDocumentIdsForCurrentUser(supabase, docIds);
+
   const subjects = categories?.filter((c) => c.type === "subject") ?? [];
   const grades = categories?.filter((c) => c.type === "grade") ?? [];
   const exams = categories?.filter((c) => c.type === "exam") ?? [];
 
-  const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
-  const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
   const paginationItems = getPaginationItems(page, totalPages);
-  const metaLine =
-    totalCount === 0
-      ? "0 tài liệu"
-      : totalPages <= 1
-        ? `${totalCount} tài liệu`
-        : `Hiển thị ${startItem.toLocaleString("vi-VN")}–${endItem.toLocaleString("vi-VN")} trong ${totalCount.toLocaleString("vi-VN")} tài liệu`;
-  const keywordMeta = keyword ? ` cho "${keyword}"` : "";
 
   const docList = docs ?? [];
   const featuredDocs = docList.slice(0, 3);
@@ -213,28 +231,24 @@ export default async function TaiLieuPage({
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
             Lọc theo khối lớp, môn học và kỳ thi — tìm đúng thứ bạn cần.
           </p>
-          <div className="mt-4 lg:hidden">
-            <DiscoveryFilters grades={grades} subjects={subjects} exams={exams} basePath="/cua-hang" />
-          </div>
         </div>
       </section>
       <div className="reveal-section reveal-delay-1 section-container section-spacing flex gap-6 lg:gap-8">
-        <aside className="hidden w-64 shrink-0 lg:block">
+        <aside className="hidden w-64 shrink-0 lg:sticky lg:top-20 lg:z-10 lg:block lg:max-h-[calc(100vh-5.5rem)] lg:overflow-x-hidden lg:overflow-y-auto lg:self-start">
           <DiscoveryFilters grades={grades} subjects={subjects} exams={exams} basePath="/cua-hang" variant="sidebar" />
         </aside>
         <section className="min-w-0 flex-1">
+          <div className="sticky top-16 z-20 mb-4 rounded-xl border border-line bg-surface/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-surface/90 lg:hidden">
+            <DiscoveryFilters grades={grades} subjects={subjects} exams={exams} basePath="/cua-hang" />
+          </div>
           <StickyDocumentsToolbar
             activeFilterCount={activeFilterCount}
             sort={sort}
             sortOptions={sortOptions}
             clearAllHref={clearAllHref}
           />
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted">
-              {metaLine}
-              {keywordMeta}
-            </p>
-            <div className="premium-panel flex flex-1 flex-wrap items-center justify-end gap-2.5 px-3 py-2.5 text-sm">
+          <div className="mb-5">
+            <div className="premium-panel flex w-full flex-wrap items-center justify-end gap-2.5 px-3 py-2.5 text-sm">
               <form action="/cua-hang" method="get" className="flex min-w-[280px] flex-1 items-center gap-2">
                 {params.grade ? <input type="hidden" name="grade" value={params.grade} /> : null}
                 {params.subject ? <input type="hidden" name="subject" value={params.subject} /> : null}
@@ -256,7 +270,6 @@ export default async function TaiLieuPage({
                 </button>
               </form>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted">Sắp xếp</span>
                 {sortOptions.map((opt) => {
                   const href = opt.href;
                   return (
@@ -309,6 +322,7 @@ export default async function TaiLieuPage({
                     ratingCount={reviewStats[doc.id]?.count ?? 0}
                     avgRating={reviewStats[doc.id]?.avg ?? null}
                     soldCount={soldStats[doc.id] ?? 0}
+                    isPurchased={purchasedIds.has(doc.id)}
                     enableMicroInteraction={false}
                     enableQuickPreview={false}
                     quickPreviewVariant={quickPreviewVariant}
@@ -329,6 +343,7 @@ export default async function TaiLieuPage({
                     soldCount={soldStats[doc.id] ?? 0}
                     ratingCount={reviewStats[doc.id]?.count ?? 0}
                     avgRating={reviewStats[doc.id]?.avg ?? null}
+                    isPurchased={purchasedIds.has(doc.id)}
                   />
                 ))}
               </div>

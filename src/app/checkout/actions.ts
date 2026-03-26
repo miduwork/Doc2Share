@@ -1,9 +1,6 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { resolveCheckoutPaymentProvider } from "@/lib/payments/providers";
-import type { CheckoutPaymentProvider } from "@/lib/payments/providers/types";
-import { createCheckoutRepository, type CheckoutRepository } from "@/lib/domain/checkout";
 import { ok, fail, type ActionResult } from "@/lib/action-result";
 import { isValidUuid } from "@/lib/uuid";
 
@@ -23,20 +20,10 @@ export type CheckoutStatusData = {
   paidAt: string | null;
 };
 
-type CheckoutActionDeps = {
-  repository: CheckoutRepository;
-  paymentProvider: CheckoutPaymentProvider;
-};
 
-function resolveCheckoutDeps(overrides?: Partial<CheckoutActionDeps>): CheckoutActionDeps {
-  return {
-    repository: overrides?.repository ?? createCheckoutRepository(),
-    paymentProvider: overrides?.paymentProvider ?? resolveCheckoutPaymentProvider(),
-  };
-}
-
-import { createDocumentOrder } from "@/lib/orders/createOrder";
-import { createOrderRepository } from "@/lib/orders/repository";
+import { createCheckoutRepository } from "@/lib/domain/checkout";
+import { resolveCheckoutPaymentProvider } from "@/lib/payments/providers";
+import { runCheckoutOrchestrator } from "@/lib/domain/checkout/services/checkout-service";
 
 export async function createCheckoutVietQr(
   documentId: string,
@@ -48,9 +35,13 @@ export async function createCheckoutVietQr(
   if (!authData.user) return fail("Vui lòng đăng nhập để thanh toán.");
 
   try {
-    const result = await createDocumentOrder({
-      userId: authData.user.id,
-      documentId: documentId,
+    const repository = createCheckoutRepository();
+    const paymentProvider = resolveCheckoutPaymentProvider();
+
+    const result = await runCheckoutOrchestrator({
+      repository,
+      paymentProvider,
+      documentId,
     });
     return ok(result);
   } catch (error) {
@@ -68,7 +59,7 @@ export async function getCheckoutOrderStatus(
   if (!authData.user) return fail("Vui lòng đăng nhập để kiểm tra đơn hàng.");
 
   try {
-    const repository = createOrderRepository();
+    const repository = createCheckoutRepository();
     const status = await repository.getOrderStatus(orderId);
     if (!status) return fail("Không tìm thấy đơn hàng.");
     return ok(status);

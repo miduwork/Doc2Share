@@ -52,7 +52,7 @@ export default function ObservabilityAlertsSection({ viewModel }: Props) {
               preset: "webhook-errors",
               window: "24h",
               severity: "error",
-              source: "edge.payment_webhook",
+              source: "api.webhook_sepay",
               event_type: "all",
               alerts_cursor: "",
               alerts_dir: "next",

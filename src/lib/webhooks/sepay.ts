@@ -52,39 +52,6 @@ export async function parseSePayJson(request: Request): Promise<
 }
 
 
-function coerceAmount(v: unknown): number | null {
-    if (typeof v === "number" && Number.isFinite(v)) return v;
-    if (typeof v === "string" && v.trim() !== "") {
-        // Normalize input: remove spaces, keep only digits and separators.
-        const s = v.replace(/\s/g, "");
-        const cleaned = s.replace(/[^\d.,]/g, "");
-        if (!cleaned) return null;
-
-        // Thousands separator with dot: "2.000" => 2000
-        if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
-            return parseInt(cleaned.replace(/\./g, ""), 10);
-        }
-
-        // Thousands separator with comma: "2,000" => 2000
-        if (/^\d{1,3}(,\d{3})+$/.test(cleaned)) {
-            return parseInt(cleaned.replace(/,/g, ""), 10);
-        }
-
-        // Integer amount: "2000"
-        if (/^\d+$/.test(cleaned)) {
-            return parseInt(cleaned, 10);
-        }
-
-        // Decimal fallback:
-        // - if only comma is present, treat comma as decimal separator
-        // - otherwise, keep dots as decimal separator
-        const normalized =
-            cleaned.includes(",") && !cleaned.includes(".") ? cleaned.replace(/,/g, ".") : cleaned;
-        const n = parseFloat(normalized);
-        return Number.isFinite(n) ? n : null;
-    }
-    return null;
-}
 
 export function normalizeSePayPayload(
     body: SePayWebhookPayload,
@@ -108,8 +75,6 @@ export async function handleSePayWebhook(
     body: SePayWebhookPayload,
 ): Promise<SePayHandleResult> {
     const content = body.content ?? "";
-    const description = body.description ?? "";
-    const text = `${content} ${description}`.trim();
     const { transferTypeNorm, transferAmount } = normalizeSePayPayload(body);
 
     if (transferTypeNorm !== "in") {

@@ -38,7 +38,6 @@ export default function StickyDocumentsToolbar({
           Bộ lọc: {activeFilterCount}
         </span>
         <div className="flex flex-wrap items-center gap-1">
-          <span className="px-1 text-xs font-semibold uppercase tracking-wide text-muted sm:text-sm sm:font-medium sm:normal-case sm:tracking-normal">Sắp xếp</span>
           {sortOptions.map((opt) => (
             <Link
               key={opt.id}

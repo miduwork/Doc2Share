@@ -19,6 +19,7 @@ export default function DocumentListCard({
   ratingCount = 0,
   avgRating = null,
   topBadge = "premium",
+  isPurchased = false,
 }: DocumentListCardProps) {
   const subject = categories.find((c) => c.id === doc.subject_id);
   const grade = categories.find((c) => c.id === doc.grade_id);
@@ -26,7 +27,7 @@ export default function DocumentListCard({
   const slug = slugify(doc.title);
   const href = `/cua-hang/${doc.id}/${slug}`;
 
-  const topBadgeNode =
+  const resolvedTopBadgeDefault =
     topBadge === false
       ? undefined
       : topBadge === "free"
@@ -34,6 +35,8 @@ export default function DocumentListCard({
         : topBadge === "premium"
           ? "Nổi bật"
           : (topBadge as ReactNode);
+
+  const topBadgeForImage = isPurchased ? "Đã mua" : resolvedTopBadgeDefault;
 
   const bottomBadgeNode = (
     <>
@@ -52,7 +55,8 @@ export default function DocumentListCard({
         <ImageCard
           imageUrl={doc.thumbnail_url ?? null}
           alt={doc.title}
-          topBadge={topBadgeNode}
+          topBadge={topBadgeForImage}
+          topBadgeTone={isPurchased ? "purchased" : "default"}
           bottomBadge={bottomBadgeNode}
           aspectClass="aspect-[4/3] w-36 shrink-0 sm:w-44"
           shimmer={false}

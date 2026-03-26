@@ -32,6 +32,8 @@ interface Props {
   /** Bật/tắt nút xem nhanh. Mặc định true. */
   enableQuickPreview?: boolean;
   quickPreviewVariant?: QuickPreviewVariant;
+  /** User đã có quyền đọc (đã mua) — hiển thị tag Đã mua */
+  isPurchased?: boolean;
 }
 
 export default function DocumentCard({
@@ -46,6 +48,7 @@ export default function DocumentCard({
   enableMicroInteraction = true,
   enableQuickPreview = true,
   quickPreviewVariant = "A",
+  isPurchased = false,
 }: Props) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const previewOpenButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -112,7 +115,7 @@ export default function DocumentCard({
     requestAnimationFrame(() => previewOpenButtonRef.current?.focus());
   };
 
-  const topBadgeNode =
+  const resolvedTopBadgeDefault =
     topBadge === false
       ? undefined
       : topBadge === "free"
@@ -120,6 +123,9 @@ export default function DocumentCard({
         : topBadge === "premium"
           ? "Nổi bật"
           : (topBadge as ReactNode);
+
+  /** Đã mua: ưu tiên tag góc trên ảnh (thay Nổi bật) để dễ nhìn */
+  const topBadgeForImage = isPurchased ? "Đã mua" : resolvedTopBadgeDefault;
 
   const bottomBadgeNode = (
     <>
@@ -137,7 +143,8 @@ export default function DocumentCard({
       <ImageCard
         imageUrl={doc.thumbnail_url ?? null}
         alt={doc.title}
-        topBadge={topBadgeNode}
+        topBadge={topBadgeForImage}
+        topBadgeTone={isPurchased ? "purchased" : "default"}
         bottomBadge={bottomBadgeNode}
         aspectClass={isCompact ? "aspect-[3/2]" : "aspect-[4/3]"}
         shimmer

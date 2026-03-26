@@ -60,22 +60,27 @@ export default function PriceCtaBlock({
     </>
   );
 
+  const priceLine = (
+    <span className="inline-flex items-baseline gap-0.5 whitespace-nowrap tabular-nums">
+      {Number(price).toLocaleString("vi-VN")}
+      <span className="underline decoration-1 underline-offset-2">đ</span>
+    </span>
+  );
+
   return (
     <div className={`${wrapperClass} ${className}`.trim()}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-col">
-          <p className={labelClass}>{priceLabel}</p>
-          <p className={priceClass}>
-            {Number(price).toLocaleString("vi-VN")} <span className="underline decoration-1 underline-offset-2">đ</span>
-          </p>
+      <div className="flex flex-col gap-2">
+        <p className={labelClass}>{priceLabel}</p>
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <p className={`${priceClass} min-w-0`}>{priceLine}</p>
+          {href ? (
+            <Link href={href} className={ctaClass} aria-label={ctaAriaLabel}>
+              {ctaContent}
+            </Link>
+          ) : (
+            <span className={ctaClass}>{ctaContent}</span>
+          )}
         </div>
-        {href ? (
-          <Link href={href} className={ctaClass} aria-label={ctaAriaLabel}>
-            {ctaContent}
-          </Link>
-        ) : (
-          <span className={ctaClass}>{ctaContent}</span>
-        )}
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ok, fail, type ActionResult } from "@/lib/action-result";
 import { setSessionCookieId } from "./cookie";
 import { evaluateRegisterDevicePolicy } from "./registerDeviceAndSession.logic";
+import { isLikelyMissingHardwareColumnError, persistDeviceLogRow } from "./persistDeviceLogRow";
 
 function getClientIp(hd: Headers): string {
   const forwarded = hd.get("x-forwarded-for") ?? hd.get("x-real-ip") ?? "";
@@ -68,27 +69,47 @@ export async function registerDeviceAndSession(
   const effectiveDeviceId = recoveredDeviceId || deviceId;
 
   if (isNewDevice) {
-    await supabase.from("device_logs").upsert(
-      {
-        user_id: user.id,
-        device_id: effectiveDeviceId,
-        device_info: { userAgent, clientIp },
-        hardware_fingerprint: hardwareFingerprint || null,
-        hardware_hash: hardwareHash || null,
-        last_login: new Date().toISOString(),
-      },
-      { onConflict: "user_id,device_id" }
-    );
+    const { error: persistErr } = await persistDeviceLogRow(supabase, {
+      user_id: user.id,
+      device_id: effectiveDeviceId,
+      device_info: { userAgent, clientIp },
+      hardware_fingerprint: hardwareFingerprint || null,
+      hardware_hash: hardwareHash || null,
+      last_login: new Date().toISOString(),
+    });
+    if (persistErr) {
+      console.error(
+        "registerDeviceAndSession: device_logs persist failed",
+        persistErr.code,
+        persistErr.message,
+        persistErr
+      );
+      return fail("Không thể ghi thiết bị. Vui lòng thử lại.");
+    }
   } else if (hardwareHash) {
-    // Luôn cập nhật fingerprint kể cả thiết bị cũ để sync dữ liệu phần cứng mới nhất
-    await supabase.from("device_logs")
-      .update({
-        hardware_fingerprint: hardwareFingerprint || null,
-        hardware_hash: hardwareHash || null,
-        last_login: new Date().toISOString(),
-      })
+    const lastLogin = new Date().toISOString();
+    const payloadWithHw = {
+      hardware_fingerprint: hardwareFingerprint || null,
+      hardware_hash: hardwareHash,
+      last_login: lastLogin,
+    };
+    const payloadNoHw = { last_login: lastLogin };
+    let { error: updateErr } = await supabase
+      .from("device_logs")
+      .update(payloadWithHw)
       .eq("user_id", user.id)
       .eq("device_id", effectiveDeviceId);
+    if (updateErr && isLikelyMissingHardwareColumnError(updateErr)) {
+      ({ error: updateErr } = await supabase
+        .from("device_logs")
+        .update(payloadNoHw)
+        .eq("user_id", user.id)
+        .eq("device_id", effectiveDeviceId));
+    }
+    if (updateErr) {
+      console.error("registerDeviceAndSession: device_logs update failed", updateErr);
+      return fail("Không thể cập nhật thiết bị. Vui lòng thử lại.");
+    }
   }
 
   const { data: oldSessions } = await supabase

@@ -1,6 +1,6 @@
 # Doc2Share – Secure Educational Document Marketplace
 
-Ứng dụng sàn tài liệu giáo dục bảo mật: Supabase (PostgreSQL, Auth, Storage), Next.js, Edge Functions (get-secure-link, payment-webhook).
+Ứng dụng sàn tài liệu giáo dục bảo mật: Supabase (PostgreSQL, Auth, Storage), Next.js, Edge Functions (get-secure-link, resolve-ott). Webhook SePay xử lý tại Next.js (`/api/webhook/sepay`).
 
 ## Tech stack
 
@@ -28,15 +28,16 @@ NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 ```
 
-Trong Supabase Edge Functions (Settings → Secrets), thêm (cho payment-webhook):
+Trên **môi trường chạy Next.js** (Vercel, VPS, …), đặt biến:
 
-- `WEBHOOK_SEPAY_API_KEY` – key dùng để xác thực SePay webhook (`Authorization: Apikey <key>`).
+- `WEBHOOK_SEPAY_API_KEY` – key xác thực SePay webhook (`Authorization: Apikey <key>`), khớp cấu hình trên my.sepay.vn.
+- `SUPABASE_SERVICE_ROLE_KEY` – bắt buộc để handler webhook cập nhật đơn và cấp quyền.
 
-### 3. Deploy Edge Functions
+### 3. Deploy Edge Functions (tùy chọn — chỉ get-secure-link / resolve-ott)
 
 ```bash
 supabase functions deploy get-secure-link
-supabase functions deploy payment-webhook
+# resolve-ott nếu dùng luồng OTT
 ```
 
 ### 4. Chạy app
@@ -64,21 +65,21 @@ Mở [http://localhost:3000](http://localhost:3000).
 
 - **DB**: `categories`, `documents`, `profiles`, `permissions`, `device_logs`, `active_sessions`, `usage_stats`, `access_logs`, `security_logs`, `orders`, `order_items`. RLS và triggers (tạo profile khi đăng ký, cảnh báo >2 thiết bị, tự khóa user khi 3 red flags/1h).
 - **Đọc tài liệu (bảo mật)**: Ứng dụng web (Secure Reader) gọi **`POST /api/secure-pdf`** — stream PDF, cookie session, rate limit và audit (`access_logs`, action `secure_pdf`). **`POST /api/secure-link`** trả signed URL ngắn hạn (cùng quy tắc nghiệp vụ trong `src/lib/secure-access/secure-access-core.ts`). **Edge `get-secure-link`**: client gửi **Bearer JWT** (app mobile / tích hợp ngoài), cùng logic cốt lõi sau khi sync từ core; ghi `access_logs` với action `get_secure_link`, có thể tạo `active_sessions` nếu thiếu. Chi tiết: [ARCHITECTURE.md](./ARCHITECTURE.md) mục “Luồng truy cập tài liệu”.
-- **payment-webhook**: Xác thực SePay API key header, match order, idempotent; transaction cập nhật `orders` + insert `permissions`.
+- **SePay webhook (Next.js)**: `POST /api/webhook/sepay` — xác thực API key, match đơn, idempotent; cập nhật `orders` + `permissions` (xem `src/lib/webhooks/sepay.ts`).
 - **Frontend**: Trang chủ + lọc (khối lớp, môn, kỳ thi), SEO URL `/cua-hang/[id]/[slug]`, Schema.org CreativeWork, preview 3–5 trang, Secure Reader (chặn right-click/Ctrl+C/P/S/F12, watermark, blur khi chuột ra ngoài), Dashboard (Tủ sách, Quản lý thiết bị), Admin (Overview, Document CMS, Security, Users, Webhooks).
 
 ## SePay webhook
 
-- SePay gửi POST tới URL: `https://<project-ref>.supabase.co/functions/v1/payment-webhook`.
-- Header xác thực: `Authorization: Apikey <WEBHOOK_SEPAY_API_KEY>`.
+- SePay gửi POST tới URL **public của app**: `https://<domain-của-bạn>/api/webhook/sepay` (HTTPS).
+- Header xác thực: `Authorization: Apikey <WEBHOOK_SEPAY_API_KEY>` (giá trị trùng biến môi trường trên host Next.js).
 - Payload dùng `transferType=in`, `transferAmount`, `content/description/referenceCode` để khớp `orders.external_id` (hoặc fallback theo token cũ).
-- **Logic parse/validate** nằm ở `src/lib/payments/sepay-webhook-core.ts`. Sau khi sửa file này, chạy **`npm run sync:sepay`** để đồng bộ sang Edge Function (`scripts/sync-sepay-core.mjs`), rồi deploy: `supabase functions deploy payment-webhook`.
+- **Logic parse/validate** nằm ở `src/lib/payments/sepay-webhook-core.ts` (dùng trực tiếp bởi `src/lib/webhooks/sepay.ts`). Sau khi sửa core, deploy lại app Next.js; không còn Edge Function `payment-webhook`.
 
 ## Luồng thanh toán (Payment flow)
 
 1. **Checkout**: User chọn tài liệu → `/checkout` → server action `createCheckoutVietQr(documentId)` tạo bản ghi `orders` (status `pending`), `order_items`, trả về VietQR / link chuyển khoản. Trường `orders.external_id` (VQR-xxx hoặc UUID) dùng làm nội dung chuyển khoản.
 2. **User chuyển khoản**: User chuyển đúng số tiền, nội dung chuyển khoản chứa `external_id` (ví dụ `VQR-abc123` hoặc UUID đơn hàng).
-3. **Webhook**: SePay gọi POST `payment-webhook` với payload (transferType, transferAmount, content/description/referenceCode). Edge function:
+3. **Webhook**: SePay gọi POST `/api/webhook/sepay` với payload (transferType, transferAmount, content/description/referenceCode). Handler Next.js:
    - Xác thực header `Authorization: Apikey <WEBHOOK_SEPAY_API_KEY>`.
    - Parse JSON, trích `orderRefs` (referenceCode, VQR-*, D2S-*, UUID), resolve `event_id` (idempotency).
    - Gọi RPC `register_webhook_event(provider, event_id, payload_hash)`: nếu cùng event_id + cùng hash → trả 200 duplicate; khác hash → 409 hash_mismatch.

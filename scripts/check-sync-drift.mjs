@@ -15,11 +15,6 @@ const root = join(__dirname, "..");
 
 const PAIRS = [
     {
-        src: "src/lib/payments/sepay-webhook-core.ts",
-        dest: "supabase/functions/payment-webhook/providers/sepay-core.ts",
-        syncCmd: "npm run sync:sepay",
-    },
-    {
         src: "src/lib/secure-access/secure-access-core.ts",
         dest: "supabase/functions/get-secure-link/secure-access-core.ts",
         syncCmd: "npm run sync:secure-access",

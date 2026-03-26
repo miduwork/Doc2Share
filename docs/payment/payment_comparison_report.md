@@ -6,7 +6,7 @@ Báo cáo này đối sánh cấu trúc thanh toán hiện tại của dự án 
 
 | Thành phần | Cấu trúc hiện tại (Project) | Cấu trúc mới (docs/payment/files) | Đánh giá |
 | :--- | :--- | :--- | :--- |
-| **Kiến trúc Webhook** | **Supabase Edge Functions** (`supabase/functions/payment-webhook`) | **Next.js API Routes** (`app/api/webhook/sepay/route.ts`) | Thay đổi lớn về nơi xử lý logic thanh toán từ Edge Function sang Next.js API. |
+| **Kiến trúc Webhook** | ~~Supabase Edge `payment-webhook`~~ (đã gỡ khỏi repo) | **Next.js API** [`app/api/webhook/sepay/route.ts`](../../src/app/api/webhook/sepay/route.ts) | Webhook SePay chỉ qua Next.js. |
 | **Xử lý QR Code** | Hiện tại chưa có API riêng, có thể đang gọi trực tiếp VietQR từ frontend. | **API Route tập trung** (`app/api/qr/route.ts`) | Chuẩn hóa việc tạo QR qua server để bảo mật và quản lý tham số tốt hơn. |
 | **Logic đơn hàng** | Phân tán trong các Server Actions hoặc components. | **Thư mục logic riêng biệt** (`lib/orders/`) | Phân tách rõ ràng (create, repository, delivery, types). |
 | **Cấu hình Pricing** | Có thể đang hardcode hoặc dùng Supabase trực tiếp. | **Hệ thống App Config sống** (`lib/config/`, `lib/orders/appConfig.server.ts`) | Cho phép Admin chỉnh sửa giá in ấn, phí đóng quyển ngay trên giao diện. |
@@ -74,7 +74,7 @@ Chuyển đổi từ xử lý Edge Function sang API Route tích hợp.
 - **Hành động**:
     1. Sao chép cấu trúc `app/api/` từ `docs/payment/files/` vào `src/app/api/`.
     2. Quan trọng nhất là `api/webhook/sepay/route.ts` - nơi nhận thông báo thanh toán từ SePay và tự động cập nhật trạng thái đơn hàng.
-- **Khuyến nghị**: Ngắt kết nối (Pause) Supabase Edge Function `payment-webhook` sau khi API mới hoạt động để tránh xử lý trùng lặp giao dịch.
+- **Lưu ý**: Nếu trước đây SePay trỏ tới Supabase Edge, hãy đổi URL sang `https://<domain>/api/webhook/sepay` và tắt/xóa function cũ trên Supabase để tránh xử lý trùng.
 
 ### Bước 5: Hoàn thiện Giao diện Quản trị & Frontend UI (UI Integration)
 Cung cấp công cụ quản lý trực quan cho Admin và trải nghiệm người dùng.

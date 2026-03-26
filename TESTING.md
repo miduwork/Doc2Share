@@ -16,7 +16,7 @@
 | P0 | Admin guards (`canManage*`, `computeAdminContext`) | Unit | Pure logic, không mock Supabase |
 | P0 | Upload orchestrator | Unit | Đã có: mock repository |
 | P1 | `formatDate` / util thuần | Unit | Dễ test, không I/O |
-| P2 | Payment webhook (parse, idempotency) | Unit + Integration | Đã có: Node unit (sepay-webhook), Deno (sepay.test.ts), integration (webhook-idempotency) |
+| P2 | Payment webhook (parse, idempotency) | Unit + Integration | Đã có: Node unit (`sepay-webhook.test.ts`), integration (webhook-idempotency) |
 | P2 | RLS (super_admin vs support_agent) | Integration | Đã có: `test:integration` khi có Supabase local + test users |
 | P3 | Server actions (upload, checkout) | Integration | Mock `createClient` / service role |
 | P3 | E2E (login, checkout, admin) | E2E | Playwright/Cypress khi cần |
@@ -27,8 +27,7 @@
 - **`src/lib/date.test.ts`**: `formatDate` (chuỗi ngày → định dạng vi-VN; input không hợp lệ → `"Invalid Date"`).
 - **`src/lib/domain/document-upload/services/upload-orchestrator.test.ts`**: orchestrator với mock repository (finalize fallback, rollback khi create session lỗi, không xóa file sau khi đã có document row).
 - **`src/lib/secure-access/secure-access-core.test.ts`**: Quy tắc thuần đọc tài liệu (thiết bị, phiên, quyền, rate math) — đồng bộ sang Edge qua `npm run sync:secure-access`.
-- **`src/lib/payments/sepay-webhook.test.ts`**: SePay parse payload, extractOrderReferences, resolveEventId, normalizeOrderRef, isIncomingTransfer, extractAmount (logic mirror của Edge function).
-- **`supabase/functions/payment-webhook/providers/sepay.test.ts`**: cùng nội dung, chạy bằng Deno (`npm run test:webhook` khi đã cài Deno).
+- **`src/lib/payments/sepay-webhook.test.ts`**: SePay parse payload, extractOrderReferences, resolveEventId, normalizeOrderRef, isIncomingTransfer, extractAmount (logic dùng bởi `POST /api/webhook/sepay`).
 - **`src/test-integration/webhook-idempotency.test.ts`**: tích hợp RPC `register_webhook_event` (first call → should_process true, second same hash → duplicate; same event_id khác hash → hash_mismatch). Cần `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
 - **`src/test-integration/rls-admin.test.ts`**: tích hợp RLS (super_admin đọc được webhook_events/security_logs; support_agent không). Cần Supabase local + hai user test (xem bên dưới).
 
@@ -70,6 +69,3 @@ Chạy `npm run test:integration` (tự tìm mọi `*.test.ts` trong `src/test-i
 - **Checkout pending**: [`e2e/checkout-pending.spec.ts`](e2e/checkout-pending.spec.ts) — thêm `E2E_CHECKOUT_DOCUMENT_ID` (UUID tài liệu user có thể mua; đơn mới thường ở trạng thái `pending`).
 - **Admin chờ duyệt**: [`e2e/admin-documents-pending.spec.ts`](e2e/admin-documents-pending.spec.ts) — `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD` (user `role = admin`, có quyền vào Document CMS).
 
-## Test webhook bằng Deno
-
-Khi đã cài [Deno](https://deno.land): `npm run test:webhook`. Chạy `supabase/functions/payment-webhook/providers/sepay.test.ts` (cùng logic với Node test trong `src/lib/payments/sepay-webhook.test.ts`).

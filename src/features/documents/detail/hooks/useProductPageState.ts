@@ -81,14 +81,15 @@ export function useProductPageState({
     async function submitReview() {
         if (!user?.id || !doc.id || submittingReview) return;
         setSubmittingReview(true);
+        const nowIso = new Date().toISOString();
         const { error } = await supabase.from("document_reviews").upsert(
-            { user_id: user.id, document_id: doc.id, rating: reviewRating, comment: reviewComment || null },
+            { user_id: user.id, document_id: doc.id, rating: reviewRating, comment: reviewComment || null, created_at: nowIso },
             { onConflict: "user_id,document_id" }
         );
         setSubmittingReview(false);
         if (!error) {
             setReviewsList((prev) => [
-                { id: "", user_id: user.id, rating: reviewRating, comment: reviewComment || null, created_at: new Date().toISOString() },
+                { id: "", user_id: user.id, rating: reviewRating, comment: reviewComment || null, created_at: nowIso },
                 ...prev.filter((r) => r.user_id !== user.id),
             ]);
             setReviewComment("");

@@ -1,7 +1,6 @@
 /**
- * SePay webhook payload parsing (pure). Single source of truth; synced to
- * supabase/functions/payment-webhook/providers/sepay-core.ts for Edge (Deno).
- * Run: node scripts/sync-sepay-core.mjs
+ * SePay webhook payload parsing (pure). Dùng chung cho `src/lib/webhooks/sepay.ts`
+ * (Next.js `POST /api/webhook/sepay`) và unit test `sepay-webhook.test.ts`.
  */
 
 export type SePayPayload = {

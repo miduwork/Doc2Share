@@ -34,6 +34,14 @@ export async function getProductPageData({ id }: { id: string }): Promise<Produc
     // table may not exist
   }
 
+  // Enforce "latest review per user": if DB has duplicates for some reason,
+  // keep only the most recent (created_at desc due to query order above).
+  const latestReviewByUser = new Map<string, ReviewRow>();
+  for (const r of reviewsList) {
+    if (!latestReviewByUser.has(r.user_id)) latestReviewByUser.set(r.user_id, r);
+  }
+  reviewsList = Array.from(latestReviewByUser.values());
+
   const ratings = reviewsList.map((r) => r.rating);
   const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
 

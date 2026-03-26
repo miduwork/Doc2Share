@@ -1,7 +1,7 @@
 ## Integration test checklist (route-level)
 
 Mục tiêu: test end-to-end cấp quyền đọc tài liệu theo chuỗi nghiệp vụ:
-`Checkout → payment-webhook → Tủ sách → /api/secure-pdf (SecureReader)`
+`Checkout → POST /api/webhook/sepay → Tủ sách → /api/secure-pdf (SecureReader)`
 
 Đây là checklist theo hướng **route-level** (test thật handler Next API `/api/secure-pdf`),
 không chỉ gọi gate nội bộ.
@@ -17,7 +17,7 @@ không chỉ gọi gate nội bộ.
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY` (seed/verify DB)
    - `SUPABASE_ANON_KEY` (hoặc `NEXT_PUBLIC_SUPABASE_ANON_KEY`) (login user)
-   - `WEBHOOK_SEPAY_API_KEY` (gọi Edge webhook trực tiếp)
+   - `WEBHOOK_SEPAY_API_KEY` (gọi `POST /api/webhook/sepay` trên cùng `BASE_URL`)
    - `TEST_USER_EMAIL`
    - `TEST_USER_PASSWORD`
 
@@ -88,9 +88,9 @@ Seed tối thiểu:
 - Lấy `orderId` trả về từ RPC.
 - Query DB để lấy `external_id` của `orderId` (webhook provider dùng `referenceCode = orders.external_id`).
 
-### Bước 3: Gọi Edge webhook trực tiếp
+### Bước 3: Gọi webhook SePay (handler Next.js)
 - URL:
-  - `${SUPABASE_URL}/functions/v1/payment-webhook`
+  - `${BASE_URL}/api/webhook/sepay`
 - Header:
   - `Authorization: Apikey <WEBHOOK_SEPAY_API_KEY>`
   - `Content-Type: application/json`

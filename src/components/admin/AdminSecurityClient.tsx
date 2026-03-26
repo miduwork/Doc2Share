@@ -10,6 +10,7 @@ import {
   revokeSessionAndDevices,
   temporaryBanUser,
 } from "@/app/admin/security/actions";
+import { useAdminFilters } from "@/hooks/useAdminFilters";
 import { exportAccessLogsCsv, exportSecurityLogsCsv } from "@/app/admin/security/export-actions";
 import type {
   AccessLogRow,
@@ -70,23 +71,9 @@ export default function AdminSecurityClient({
   const [revoking, setRevoking] = useState<string | null>(null);
   const [panicUserId, setPanicUserId] = useState<string | null>(null);
   const [exporting, setExporting] = useState<"access" | "security" | null>(null);
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const withQuery = (patch: Record<string, string | null>) => {
-    const next = new URLSearchParams(searchParams.toString());
-    Object.entries(patch).forEach(([key, value]) => {
-      if (!value) next.delete(key);
-      else next.set(key, value);
-    });
-    return `${pathname}?${next.toString()}`;
-  };
-
+  const { router, pathname, searchParams, withQuery, patchQuery, resetParams } = useAdminFilters();
   const resetCursorParams = () => {
-    const next = new URLSearchParams(searchParams.toString());
-    ["access_cursor", "access_dir", "security_cursor", "security_dir"].forEach((k) => next.delete(k));
-    router.push(`${pathname}?${next.toString()}`);
+    resetParams(["access_cursor", "access_dir", "security_cursor", "security_dir"]);
   };
 
   async function revokeSession(userId: string) {
@@ -211,7 +198,7 @@ export default function AdminSecurityClient({
           exporting={exporting}
           onApplyFilters={resetCursorParams}
           onExportByAction={exportByAction}
-          onPatchQuery={(patch) => router.push(withQuery(patch))}
+          onPatchQuery={patchQuery}
         />
       ) : null}
       {workspace === "geo" ? <AdminSecurityGeoSection geoPoints={geoPoints ?? []} /> : null}

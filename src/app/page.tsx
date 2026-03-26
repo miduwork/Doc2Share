@@ -22,7 +22,8 @@ export default async function HomePage() {
   return (
     <PublicLayout>
       {/* Hero – gradient đa lớp, blob lớn, CTA Khám phá tài liệu */}
-      <section className="reveal-section relative overflow-hidden border-b border-line py-16 sm:py-20">
+      {/* overflow-hidden có thể làm cắt mép dưới chữ trong animation/reflow; chỉ ẩn tràn ngang. */}
+      <section className="reveal-section relative overflow-x-hidden border-b border-line py-16 sm:py-20">
         {/* Gradient đa lớp: primary → trắng → emerald → accent nhạt */}
         <div
           className="absolute inset-0 -z-10 dark:hidden"
@@ -49,11 +50,13 @@ export default async function HomePage() {
           <span className="inline-flex rounded-full border border-primary-200 bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary shadow-sm dark:border-primary-700 dark:bg-slate-900/80">
             Neo Edu Premium
           </span>
-          <h1 className="font-display mt-4 text-4xl font-bold tracking-tight text-semantic-heading sm:text-5xl lg:text-6xl">
+          <h1 className="font-display mt-4 text-4xl font-bold tracking-tight text-semantic-heading leading-[1.08] sm:text-5xl lg:text-6xl">
             Tài liệu ôn thi
-            <span className="block bg-gradient-to-r from-primary-600 to-emerald-500 bg-clip-text text-transparent">chuyên sâu, trình bày đẹp</span>
+            <span className="block bg-gradient-to-r from-primary-600 to-emerald-500 bg-clip-text text-transparent leading-[1.08]">
+              chuyên sâu, trình bày đẹp
+            </span>
           </h1>
-          <p className="mx-auto mt-4 max-w-3xl text-lg text-slate-600 dark:text-slate-400">
+          <p className="mx-auto mt-6 max-w-3xl text-lg text-slate-600 dark:text-slate-400">
             Tìm đúng tài liệu trong vài giây, xem thử trực quan trước khi mua, và học tập an toàn trên nền tảng tối ưu cho học sinh Việt Nam.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">

@@ -16,11 +16,8 @@ Dùng trước khi deploy production hoặc merge nhánh release.
 
 ## SePay / VietQR
 
-- Mọi thay đổi logic parse webhook trong [`src/lib/payments/sepay-webhook-core.ts`](../src/lib/payments/sepay-webhook-core.ts):
-  1. `npm run sync:sepay`
-  2. Kiểm tra diff Edge function
-  3. `supabase functions deploy payment-webhook`
-- Xác nhận Secret `WEBHOOK_SEPAY_API_KEY` trên Supabase khớp SePay.
+- Mọi thay đổi logic parse webhook trong [`src/lib/payments/sepay-webhook-core.ts`](../src/lib/payments/sepay-webhook-core.ts): deploy lại **Next.js** (handler [`src/lib/webhooks/sepay.ts`](../src/lib/webhooks/sepay.ts) → `POST /api/webhook/sepay`).
+- Xác nhận `WEBHOOK_SEPAY_API_KEY` trên **hosting Next.js** khớp cấu hình SePay; URL webhook trỏ tới `https://<domain>/api/webhook/sepay`.
 
 ## Kiểm tra tối thiểu (local hoặc CI)
 

@@ -10,15 +10,25 @@ export async function getDocumentsListStats(supabase: SupabaseServerClient, docI
     try {
       const { data: reviews } = await supabase
         .from("document_reviews")
-        .select("document_id, rating")
-        .in("document_id", docIds);
+        .select("document_id, user_id, rating, created_at")
+        .in("document_id", docIds)
+        .order("created_at", { ascending: false });
 
       const accum: Record<string, { sum: number; count: number }> = {};
+      const latestReviewByUserPerDoc = new Set<string>();
       for (const r of reviews ?? []) {
-        const id = (r as { document_id: string }).document_id;
-        if (!accum[id]) accum[id] = { sum: 0, count: 0 };
-        accum[id].sum += Number((r as { rating: number }).rating);
-        accum[id].count += 1;
+        const { document_id: documentId, user_id: userId, rating } = r as {
+          document_id: string;
+          user_id: string;
+          rating: number;
+        };
+        const key = `${documentId}:${userId}`;
+        if (latestReviewByUserPerDoc.has(key)) continue; // keep most recent one only
+        latestReviewByUserPerDoc.add(key);
+
+        if (!accum[documentId]) accum[documentId] = { sum: 0, count: 0 };
+        accum[documentId].sum += Number(rating);
+        accum[documentId].count += 1;
       }
 
       for (const [id, v] of Object.entries(accum)) {

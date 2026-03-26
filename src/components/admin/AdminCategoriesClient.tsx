@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import { toast } from "sonner";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useAdminFilters } from "@/hooks/useAdminFilters";
 import {
   createCategory,
   updateCategory,
@@ -31,9 +31,7 @@ export default function AdminCategoriesClient({
 }: {
   initialCategories: CategoryRow[];
 }) {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
+  const { pathname, searchParams, router, withQuery } = useAdminFilters();
   const activeTypeFromUrl = useMemo(
     () => parseTypeParam(searchParams.get("section")),
     [searchParams]
@@ -63,9 +61,7 @@ export default function AdminCategoriesClient({
 
   function handleChangeSection(type: CategoryType) {
     setActiveType(type);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("section", type);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    router.replace(withQuery({ section: type }), { scroll: false });
   }
 
   async function handleCreate(type: CategoryType) {
@@ -185,11 +181,10 @@ export default function AdminCategoriesClient({
             key={type}
             type="button"
             onClick={() => handleChangeSection(type)}
-            className={`admin-btn-sm ${
-              activeType === type
-                ? "bg-primary text-white"
-                : "border border-line bg-surface text-fg hover:bg-surface-muted"
-            }`}
+            className={`admin-btn-sm ${activeType === type
+              ? "bg-primary text-white"
+              : "border border-line bg-surface text-fg hover:bg-surface-muted"
+              }`}
           >
             {TYPE_LABELS[type]}
           </button>
