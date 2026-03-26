@@ -55,6 +55,18 @@ test("extractOrderReferences recognizes app-user-order format D2S-XXXX-YYYY", ()
   assert.ok(refs.includes("D2S-A1B2-C3D4E5F6"), "refs should include full D2S-XXXX-YYYY: " + JSON.stringify(refs));
 });
 
+test("extractOrderReferences recognizes D2S app-user-order without dashes", () => {
+  const payload: SePayPayload = {
+    content: "Chuyen khoan D2S0842A667AEE5 thanh toan tai lieu",
+    description: "D2S0842A667AEE5",
+  };
+  const refs = extractOrderReferences(payload);
+  assert.ok(
+    refs.includes("D2S-0842-A667AEE5"),
+    "refs should include normalized D2S-0842-A667AEE5: " + JSON.stringify(refs),
+  );
+});
+
 test("extractOrderReferences recognizes IN AN format", () => {
   const payload: SePayPayload = {
     content: "Thanh toan IN AN ABCDEF12 tai lieu",

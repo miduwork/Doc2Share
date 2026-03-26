@@ -50,6 +50,15 @@ export function extractOrderReferences(payload: SePayPayload): string[] {
   const d2sAppUserOrder = text.match(/\b(D2S-[A-Za-z0-9]{4}-[A-Za-z0-9]{8})\b/i)?.[1];
   if (d2sAppUserOrder) refs.add(d2sAppUserOrder.toUpperCase());
 
+  // Format mới nhưng bị mất dấu '-' (hay gặp khi SePay hiển thị nội dung nén):
+  // Ví dụ: D2S0842A667AEE5 -> D2S-0842-A667AEE5
+  const d2sAppUserOrderNoDash = text.match(/(?:^|[^A-Za-z0-9])D2S([A-Za-z0-9]{4})([A-Za-z0-9]{8})(?:[^A-Za-z0-9]|$)/i);
+  if (d2sAppUserOrderNoDash) {
+    const appUser = d2sAppUserOrderNoDash[1].toUpperCase();
+    const orderPart = d2sAppUserOrderNoDash[2].toUpperCase();
+    refs.add(`D2S-${appUser}-${orderPart}`);
+  }
+
   // Format "IN AN XXXXXXXX" (Doc2Share current default)
   const inAn = text.match(/IN\s*AN\s*([a-fA-F0-9]{6,8})\b/i)?.[1];
   if (inAn) refs.add(inAn.toUpperCase());
