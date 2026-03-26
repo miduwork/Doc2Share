@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { createCheckoutVietQr, getCheckoutOrderStatus } from "@/app/checkout/actions";
+import { createCheckoutVietQr } from "@/app/checkout/actions";
+import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
+
+function orderRowToUiStatus(row: { status: string | null; payment_status: string | null }): string {
+  const paid =
+    row.status === "completed" || row.payment_status === "Đã thanh toán";
+  return paid ? "completed" : String(row.status ?? "pending");
+}
 
 export default function CheckoutForm() {
   const searchParams = useSearchParams();
@@ -56,21 +63,66 @@ export default function CheckoutForm() {
     void loadCheckout();
   }, [loadCheckout]);
 
+  // Đọc trạng thái trực tiếp từ Supabase (RLS = user chỉ thấy đơn của mình), không qua Server Action
+  // lặp lại — tránh lỗi cookie/cache khi poll. Bổ sung Realtime + poll + refetch khi quay lại tab.
   useEffect(() => {
     if (!order || order.status === "completed") return;
 
     const orderId = order.orderId;
-    const id = window.setInterval(async () => {
-      const statusRes = await getCheckoutOrderStatus(orderId);
-      if (!statusRes.ok || !statusRes.data) return;
+    const supabase = createBrowserSupabaseClient();
 
+    const applyRow = (row: { status: string | null; payment_status: string | null } | null) => {
+      if (!row) return;
+      const next = orderRowToUiStatus(row);
       setOrder((prev) => {
-        if (!prev || statusRes.data!.status === prev.status) return prev;
-        return { ...prev, status: statusRes.data!.status };
+        if (!prev || prev.status === next) return prev;
+        return { ...prev, status: next };
       });
-    }, 5000);
+    };
 
-    return () => window.clearInterval(id);
+    const fetchOnce = async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("status, payment_status")
+        .eq("id", orderId)
+        .maybeSingle();
+      if (error) return;
+      applyRow(data);
+    };
+
+    void fetchOnce();
+    const tick = window.setInterval(() => void fetchOnce(), 3000);
+
+    const channel = supabase
+      .channel(`checkout-order-${orderId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
+          filter: `id=eq.${orderId}`,
+        },
+        (payload) => {
+          const row = payload.new as { status?: string | null; payment_status?: string | null };
+          applyRow({
+            status: row.status ?? null,
+            payment_status: row.payment_status ?? null,
+          });
+        },
+      )
+      .subscribe();
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void fetchOnce();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      window.clearInterval(tick);
+      document.removeEventListener("visibilitychange", onVisible);
+      void supabase.removeChannel(channel);
+    };
   }, [order]);
 
   // Do not put `redirecting` in the dependency array: after setRedirecting(true) the effect
