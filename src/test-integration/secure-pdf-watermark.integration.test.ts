@@ -72,6 +72,7 @@ test("secure-pdf returns watermark tracing headers (e2e route check)", { skip: !
       document_id: documentId,
       device_id: deviceId,
       page: 1,
+      secure_pdf_request_id: requestId,
     }),
   });
 

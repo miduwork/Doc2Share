@@ -42,7 +42,7 @@ export default function SecureReader({
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.2);
 
-  const { pdfDoc, rawPdfBlob, numPages, loading, error, watermark, watermarkDegraded, isHighValueDoc, isDownloadable, refetch } = usePdfFetchAndDecode({ documentId, deviceId });
+  const { pdfDoc, rawPdfBlob, numPages, loading, error, watermark, watermarkDegraded, isHighValueDoc, isDownloadable, securePdfRequestId, refetch } = usePdfFetchAndDecode({ documentId, deviceId });
   const { contentHidden, setContentHidden } = useReaderSecurityGuards();
 
   const trackerRef = useRef<BehavioralTracker | null>(null);
@@ -182,7 +182,7 @@ export default function SecureReader({
           >
             <StickyNote className="h-5 w-5" />
           </button>
-          {isDownloadable && !isHighValueDoc && (
+          {isDownloadable && (
             <>
               <span className="mx-1 h-6 w-px bg-slate-600" />
               <button
@@ -239,6 +239,7 @@ export default function SecureReader({
             scale={scale}
             pagesPerView={pagesPerView}
             watermark={watermark}
+            securePdfRequestId={securePdfRequestId}
           />
         ) : pdfDoc && (
           <PdfCanvasRenderer

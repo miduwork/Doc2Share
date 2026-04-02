@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { runNextSecureDocumentAccess } from "@/lib/secure-access/run-next-secure-document-access";
 import { rasterizePdfPage } from "@/lib/secure-access/ssw/rasterizer";
+import { ACTION_SECURE_PDF } from "@/lib/access-log";
 
 // Global cache to prevent downloading the entire PDF for each individual page
 const pdfBufferCache = new Map<string, { buffer: Buffer; cachedAt: number }>();
@@ -17,6 +18,7 @@ export async function POST(req: Request) {
         // Parse body ONCE up front — req.json() consumes the ReadableStream and cannot be read twice.
         const body = await req.json().catch(() => ({}));
         const page = parseInt(body.page || "1", 10);
+        const securePdfRequestId = body.secure_pdf_request_id;
 
         // Reconstruct a fresh Request so runNextSecureDocumentAccess can read the body independently.
         const accessReq = new Request(req.url, {
@@ -35,6 +37,34 @@ export async function POST(req: Request) {
             startedAt,
         });
         if (!access.ok) return access.response;
+
+        // P0: prevent rate-limit bypass by requiring a preceding `secure-pdf` request.
+        // `secure-pdf` logs `access_logs` row action=`secure_pdf` with correlation_id=`X-D2S-Request-ID`.
+        if (typeof securePdfRequestId !== "string" || !securePdfRequestId) {
+            return NextResponse.json(
+                { error: "Missing secure_pdf_request_id. Vui lòng tải tài liệu qua /api/secure-pdf trước.", code: "SECURE_PDF_REQUEST_ID_REQUIRED" },
+                { status: 403 }
+            );
+        }
+
+        const tenMinAgoIso = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        const { data: okRow, error: checkError } = await access.ctx.service
+            .from("access_logs")
+            .select("id")
+            .eq("user_id", access.ctx.user.id)
+            .eq("document_id", access.ctx.documentId)
+            .eq("action", ACTION_SECURE_PDF)
+            .eq("status", "success")
+            .eq("correlation_id", securePdfRequestId)
+            .gte("created_at", tenMinAgoIso)
+            .maybeSingle();
+
+        if (checkError || !okRow) {
+            return NextResponse.json(
+                { error: "Invalid or expired secure-pdf request. Vui lòng tải lại tài liệu.", code: "SECURE_PDF_REQUEST_ID_INVALID" },
+                { status: 403 }
+            );
+        }
 
         // 2. Fetch PDF buffer from storage (with in-memory LRU caching to prevent per-page downloads)
         const cacheKey = access.ctx.documentId;

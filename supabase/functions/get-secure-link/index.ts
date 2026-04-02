@@ -13,6 +13,13 @@ import {
   wouldExceedHighFreqDistinctDocs,
   wouldExceedHourlySuccessLimit,
 } from "./secure-access-core.ts";
+import {
+  insertSecurityLogShared as insertSecurityLog,
+  ipFromReq,
+  logAccessShared as logAccess,
+  logObservabilityShared as logObservability,
+  persistDeviceLogRowShared as persistDeviceLogRowEdge,
+} from "./secure-access-db-helpers.ts";
 
 const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
 
@@ -65,30 +72,6 @@ function ottExpirySeconds(): number {
   );
 }
 
-/** Insert hoặc cập nhật device_logs — không dùng upsert/onConflict (cần UNIQUE khớp trên DB). */
-async function persistDeviceLogRowEdge(
-  supabase: ReturnType<typeof createClient>,
-  row: {
-    user_id: string;
-    device_id: string;
-    device_info: Record<string, unknown>;
-    last_login: string;
-  }
-) {
-  const { data: existing } = await supabase
-    .from("device_logs")
-    .select("id")
-    .eq("user_id", row.user_id)
-    .eq("device_id", row.device_id)
-    .maybeSingle();
-  if (existing?.id) {
-    return supabase
-      .from("device_logs")
-      .update({ device_info: row.device_info, last_login: row.last_login })
-      .eq("id", existing.id);
-  }
-  return supabase.from("device_logs").insert(row);
-}
 
 serve(async (req) => {
   const startedAt = Date.now();
@@ -208,7 +191,10 @@ serve(async (req) => {
 
     const isSuperAdmin = computeIsSuperAdmin(profile);
     if (activeSession?.device_id && activeSession.device_id !== device_id && !isSuperAdmin) {
-      await logAccess(supabase, user.id, document_id, "get_secure_link", "blocked", req, device_id, "device_mismatch", requestId, Date.now() - startedAt);
+      await logAccess(supabase, {
+        userId: user.id, documentId: document_id, action: "get_secure_link", status: "blocked",
+        req, deviceId: device_id, reason: "device_mismatch", requestId, latencyMs: Date.now() - startedAt
+      });
       await insertSecurityLog(
         supabase,
         user.id,
@@ -239,7 +225,10 @@ serve(async (req) => {
     const deviceIds = (devices ?? []).map((d: { device_id: string }) => d.device_id);
     const deviceGate = evaluateDeviceGate(deviceIds, device_id, isSuperAdmin);
     if (!deviceGate.ok) {
-      await logAccess(supabase, user.id, document_id, "get_secure_link", "blocked", req, device_id, "device_limit", requestId, Date.now() - startedAt);
+      await logAccess(supabase, {
+        userId: user.id, documentId: document_id, action: "get_secure_link", status: "blocked",
+        req, deviceId: device_id, reason: "device_limit", requestId, latencyMs: Date.now() - startedAt
+      });
       await logObservability(supabase, {
         requestId, source: "edge.get_secure_link", eventType: "blocked", severity: "warn",
         statusCode: 403, latencyMs: Date.now() - startedAt, userId: user.id, documentId: document_id, deviceId: device_id,
@@ -295,7 +284,10 @@ serve(async (req) => {
     const permGate = evaluateDocumentPermission(isAdminCanReadAny, permission);
     if (!permGate.ok) {
       if (permGate.reason === "no_permission") {
-        await logAccess(supabase, user.id, document_id, "get_secure_link", "blocked", req, device_id, "no_permission", requestId, Date.now() - startedAt);
+        await logAccess(supabase, {
+          userId: user.id, documentId: document_id, action: "get_secure_link", status: "blocked",
+          req, deviceId: device_id, reason: "no_permission", requestId, latencyMs: Date.now() - startedAt
+        });
         const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
         const { count: bruteCount } = await supabase
           .from("access_logs")
@@ -322,7 +314,10 @@ serve(async (req) => {
         });
         return jsonResponse(req, { error: "Bạn chưa mua tài liệu này.", request_id: requestId }, 403, requestId);
       }
-      await logAccess(supabase, user.id, document_id, "get_secure_link", "blocked", req, device_id, "expired", requestId, Date.now() - startedAt);
+      await logAccess(supabase, {
+        userId: user.id, documentId: document_id, action: "get_secure_link", status: "blocked",
+        req, deviceId: device_id, reason: "expired", requestId, latencyMs: Date.now() - startedAt
+      });
       await logObservability(supabase, {
         requestId, source: "edge.get_secure_link", eventType: "blocked", severity: "warn",
         statusCode: 403, latencyMs: Date.now() - startedAt, userId: user.id, documentId: document_id, deviceId: device_id,
@@ -340,7 +335,10 @@ serve(async (req) => {
       .eq("status", "success")
       .gte("created_at", oneHourAgo);
     if (wouldExceedHourlySuccessLimit(countHour ?? 0, rateLimitViewsPerHour())) {
-      await logAccess(supabase, user.id, document_id, "get_secure_link", "blocked", req, device_id, "rate_limit", requestId, Date.now() - startedAt);
+      await logAccess(supabase, {
+        userId: user.id, documentId: document_id, action: "get_secure_link", status: "blocked",
+        req, deviceId: device_id, reason: "rate_limit", requestId, latencyMs: Date.now() - startedAt
+      });
       await insertSecurityLog(supabase, user.id, "file_access", "medium", req, device_id, { reason: "rate_limit" }, requestId);
       await logObservability(supabase, {
         requestId, source: "edge.get_secure_link", eventType: "blocked", severity: "warn",
@@ -360,7 +358,10 @@ serve(async (req) => {
       .gte("created_at", tenMinAgo);
     const recentIds = (recentSuccess ?? []).map((r: { document_id: string | null }) => r.document_id);
     if (wouldExceedHighFreqDistinctDocs(recentIds, document_id, highFreqDocs10Min())) {
-      await logAccess(supabase, user.id, document_id, "get_secure_link", "blocked", req, device_id, "high_frequency", requestId, Date.now() - startedAt);
+      await logAccess(supabase, {
+        userId: user.id, documentId: document_id, action: "get_secure_link", status: "blocked",
+        req, deviceId: device_id, reason: "high_frequency", requestId, latencyMs: Date.now() - startedAt
+      });
       await insertSecurityLog(
         supabase,
         user.id,
@@ -412,7 +413,10 @@ serve(async (req) => {
     const functionUrl = supabaseUrlRaw.replace(".supabase.co", ".supabase.co/functions/v1/resolve-ott");
     const ottUrl = `${functionUrl}?token=${nonce}`;
 
-    await logAccess(supabase, user.id, document_id, "get_secure_link", "success", req, device_id, undefined, requestId, Date.now() - startedAt);
+    await logAccess(supabase, {
+      userId: user.id, documentId: document_id, action: "get_secure_link", status: "success",
+      req, deviceId: device_id, requestId, latencyMs: Date.now() - startedAt
+    });
     await logObservability(supabase, {
       requestId, source: "edge.get_secure_link", eventType: "success", severity: "info",
       statusCode: 200, latencyMs: Date.now() - startedAt, userId: user.id, documentId: document_id, deviceId: device_id,
@@ -443,7 +447,7 @@ serve(async (req) => {
     return jsonResponse(req, { url: ottUrl, request_id: requestId }, 200, requestId);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Internal error";
-    return jsonResponse(req, { error: message, request_id: requestId }, 400, requestId);
+    return jsonResponse(req, { error: message, request_id: requestId }, 500, requestId);
   }
 });
 
@@ -454,91 +458,3 @@ function jsonResponse(req: Request, body: object, status: number, requestId?: st
   });
 }
 
-const ipFromReq = (req: Request) =>
-  req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-
-async function logAccess(
-  supabase: ReturnType<typeof createClient>,
-  userId: string,
-  documentId: string,
-  action: string,
-  status: string,
-  req: Request,
-  deviceId?: string,
-  reason?: string,
-  requestId?: string,
-  latencyMs?: number
-) {
-  await supabase.from("access_logs").insert({
-    user_id: userId,
-    document_id: documentId,
-    action,
-    status,
-    ip_address: ipFromReq(req),
-    device_id: deviceId ?? null,
-    correlation_id: requestId ?? null,
-    metadata: {
-      ...(reason ? { reason } : {}),
-      ...(requestId ? { request_id: requestId, correlation_id: requestId } : {}),
-      ...(latencyMs != null ? { latency_ms: latencyMs } : {}),
-    },
-  });
-}
-
-async function insertSecurityLog(
-  supabase: ReturnType<typeof createClient>,
-  userId: string,
-  eventType: "login" | "file_access" | "multiple_devices" | "ip_change" | "print_attempt",
-  severity: "low" | "medium" | "high",
-  req: Request,
-  deviceId?: string,
-  metadata?: Record<string, unknown>,
-  correlationId?: string
-) {
-  await supabase.from("security_logs").insert({
-    user_id: userId,
-    event_type: eventType,
-    severity,
-    ip_address: ipFromReq(req),
-    user_agent: req.headers.get("user-agent") ?? null,
-    device_id: deviceId ?? null,
-    correlation_id: correlationId ?? null,
-    metadata: {
-      ...(metadata ?? {}),
-      ...(correlationId ? { correlation_id: correlationId } : {}),
-    },
-  });
-}
-
-async function logObservability(
-  supabase: ReturnType<typeof createClient>,
-  params: {
-    requestId: string;
-    source: string;
-    eventType: string;
-    severity: "info" | "warn" | "error";
-    statusCode: number;
-    latencyMs: number;
-    userId?: string;
-    documentId?: string;
-    deviceId?: string;
-    metadata?: Record<string, unknown>;
-  }
-) {
-  try {
-    await supabase.from("observability_events").insert({
-      request_id: params.requestId,
-      source: params.source,
-      event_type: params.eventType,
-      severity: params.severity,
-      user_id: params.userId ?? null,
-      document_id: params.documentId ?? null,
-      device_id: params.deviceId ?? null,
-      status_code: params.statusCode,
-      latency_ms: params.latencyMs,
-      metadata: params.metadata ?? {},
-    });
-  } catch {
-    // observability should not break primary flow
-  }
-}

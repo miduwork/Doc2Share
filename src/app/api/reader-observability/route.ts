@@ -6,7 +6,9 @@ import { isValidUuid } from "@/lib/uuid";
 const EVENT_WATERMARK_DEGRADED = "watermark_degraded_fallback";
 const EVENT_SUSPICIOUS_BEHAVIOR = "suspicious_behavior";
 
-// In-memory rate limiting to prevent score inflation abuse
+// In-memory rate limiting to prevent score inflation abuse.
+// Keyed by user_id (not IP) to avoid bypass by changing x-forwarded-for.
+// NOTE: Rate limiting is per Node instance; we still keep it lightweight and eviction-based.
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_EVENTS_PER_WINDOW = 10;
@@ -48,14 +50,30 @@ export async function POST(req: Request) {
     // Throttling: prevent abuse of the observability API
     const ip = req.headers.get("x-forwarded-for") || "unknown";
     const now = Date.now();
-    const rateLimit = rateLimits.get(ip) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+
+    // Eviction: remove expired keys to avoid Map growing over time.
+    for (const [key, v] of rateLimits.entries()) {
+      if (now > v.resetAt) rateLimits.delete(key);
+    }
+
+    // Key by user_id so changing IP headers can't bypass.
+    const userKey = String(user.id);
+    const rateLimit = rateLimits.get(userKey) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
     if (now > rateLimit.resetAt) {
       rateLimit.count = 1;
       rateLimit.resetAt = now + RATE_LIMIT_WINDOW_MS;
     } else {
       rateLimit.count++;
     }
-    rateLimits.set(ip, rateLimit);
+    rateLimits.set(userKey, rateLimit);
+
+    // Hard cap: if something goes wrong and we still keep growing (rare), prune oldest buckets.
+    if (rateLimits.size > 2000) {
+      const sorted = Array.from(rateLimits.entries()).sort((a, b) => a[1].resetAt - b[1].resetAt);
+      for (const [k] of sorted.slice(0, rateLimits.size - 1500)) {
+        rateLimits.delete(k);
+      }
+    }
 
     if (rateLimit.count > MAX_EVENTS_PER_WINDOW) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });

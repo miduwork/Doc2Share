@@ -19,6 +19,11 @@ const PAIRS = [
         dest: "supabase/functions/get-secure-link/secure-access-core.ts",
         syncCmd: "npm run sync:secure-access",
     },
+    {
+        src: "src/lib/secure-access/secure-access-db-helpers.ts",
+        dest: "supabase/functions/get-secure-link/secure-access-db-helpers.ts",
+        syncCmd: "npm run sync:secure-access-db",
+    },
 ];
 
 let drifted = false;

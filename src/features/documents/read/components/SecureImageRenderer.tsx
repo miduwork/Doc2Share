@@ -12,6 +12,7 @@ type SecureImageRendererProps = {
     scale: number;
     pagesPerView: 1 | 2;
     watermark: WatermarkDisplayPayload | null;
+    securePdfRequestId: string | null;
 };
 
 export default function SecureImageRenderer({
@@ -21,6 +22,7 @@ export default function SecureImageRenderer({
     currentPage,
     scale,
     pagesPerView,
+    securePdfRequestId,
 }: SecureImageRendererProps) {
     const [imageUrls, setImageUrls] = useState<Record<number, string>>({});
     const [loadingPages, setLoadingPages] = useState<Record<number, boolean>>({});
@@ -63,7 +65,8 @@ export default function SecureImageRenderer({
                         device_id: deviceId,
                         page,
                         hardware_hash: hardwareHash,
-                        hardware_fingerprint: signalsSummary
+                        hardware_fingerprint: signalsSummary,
+                        secure_pdf_request_id: securePdfRequestId ?? undefined
                     }),
                 });
 
@@ -80,7 +83,7 @@ export default function SecureImageRenderer({
                 setLoadingPages(prev => ({ ...prev, [page]: false }));
             }
         });
-    }, [currentPage, documentId, deviceId, numPages, pagesPerView]);
+    }, [currentPage, documentId, deviceId, numPages, pagesPerView, securePdfRequestId]);
 
     // Cleanup: revoke all object URLs on unmount
     useEffect(() => {

@@ -87,7 +87,21 @@ Edge **không** đọc `RATE_LIMIT_PER_IP_PER_HOUR` (giới hạn theo IP chỉ 
 - **usage_stats**: Chỉ Edge (sau khi cấp link thành công) bump `usage_stats` như trước.
 - Next dùng helper chung [`run-next-secure-document-access.ts`](../src/lib/secure-access/run-next-secure-document-access.ts) cho hai route web (`/api/secure-pdf`, `/api/secure-link`) để tránh lệch logic nội bộ.
 
-### 7.1 Đối chiếu Next vs Edge (tránh drift)
+### 7.2 Shared Database Helpers (`secure-access-db-helpers.ts`)
+
+Bổ sung từ Round 4 để giảm lặp lại code I/O (ghi log, kiểm tra thiết bị) giữa Next và Edge:
+- File nguồn: `src/lib/secure-access/secure-access-db-helpers.ts`.
+- File sync: `supabase/functions/get-secure-link/secure-access-db-helpers.ts`.
+- Lệnh: `npm run sync:secure-access-db`.
+- Các hàm: `persistDeviceLogRowShared`, `logAccessShared`, `insertSecurityLogShared`, `logObservabilityShared`.
+
+### 7.3 High-Value Doc Semantics (Round 4 Update)
+
+- **`is_high_value = true`**: Ép buộc chế độ **SSW** (Server-Side Watermarking). API `secure-pdf` trả về **403** kèm metadata để client chuyển sang `SecureImageRenderer`.
+- **`is_high_value = false`**: Cho phép tải/xem PDF gốc (vector). API `secure-pdf` trả về stream PDF trực tiếp (mã **200**).
+- **Download**: Nút tải về trong `SecureReader` hiện dựa trên cờ `is_downloadable`. Nếu là High-Value doc, nút này có thể hiện nhưng sẽ không có blob PDF để tải (trừ khi có endpoint tải watermarked PDF riêng).
+
+### 7.4 Đối chiếu Next vs Edge (tránh drift)
 
 | Khía cạnh | Next (`secure-pdf` / `secure-link`) | Edge (`get-secure-link`) |
 |-----------|-------------------------------------|---------------------------|
@@ -97,11 +111,12 @@ Edge **không** đọc `RATE_LIMIT_PER_IP_PER_HOUR` (giới hạn theo IP chỉ 
 | Rate limit IP | Có (`RATE_LIMIT_PER_IP_PER_HOUR`) | Không |
 | Brute-force blocked | Đếm `action = secure_pdf`, `status = blocked` | Logic riêng theo action `get_secure_link` |
 | Sau cấp quyền | PDF stream hoặc signed URL | Signed URL + `usage_stats` + observability |
+| High-Value Support| Có (Respect DB flag, toggle 200/403) | Không (Dùng `secure-pdf` để xem) |
 
 Checklist khi sửa helper Next:
 
 1. Đã xác nhận thay đổi thuộc **core dùng chung** hay chỉ Next I/O?
-2. Nếu là core dùng chung: sửa [`secure-access-core.ts`](../src/lib/secure-access/secure-access-core.ts), chạy test, rồi `npm run sync:secure-access`.
+2. Nếu là core dùng chung: sửa [`secure-access-core.ts`](../src/lib/secure-access/secure-access-core.ts) hoặc [`secure-access-db-helpers.ts`](../src/lib/secure-access/secure-access-db-helpers.ts), chạy test, rồi chạy lệnh sync tương ứng.
 3. Đã đối chiếu bảng trên để quyết định có cần cập nhật [`supabase/functions/get-secure-link/index.ts`](../supabase/functions/get-secure-link/index.ts) không?
 
 ---

@@ -31,6 +31,7 @@ export default function usePdfFetchAndDecode({ documentId, deviceId }: { documen
   const [isHighValueDoc, setIsHighValueDoc] = useState(false);
   const [isDownloadable, setIsDownloadable] = useState(false);
   const [rawPdfBlob, setRawPdfBlob] = useState<Blob | null>(null);
+  const [securePdfRequestId, setSecurePdfRequestId] = useState<string | null>(null);
   const degradedEventSentRef = useRef(false);
 
   const fetchPdf = useCallback(async () => {
@@ -45,6 +46,7 @@ export default function usePdfFetchAndDecode({ documentId, deviceId }: { documen
     setWatermarkDegraded(false);
     setIsHighValueDoc(false);
     setIsDownloadable(false);
+    setSecurePdfRequestId(null);
     degradedEventSentRef.current = false;
 
     try {
@@ -119,6 +121,9 @@ export default function usePdfFetchAndDecode({ documentId, deviceId }: { documen
           setIsHighValueDoc(true);
           setIsDownloadable(isDownloadableHeader || !!body.is_downloadable);
           setNumPages(numPagesHeader || body.num_pages || 0);
+
+          const requestId = res.headers.get("x-d2s-request-id");
+          if (requestId) setSecurePdfRequestId(requestId);
 
           const wmShort = res.headers.get("X-D2S-WM-Short");
           if (wmShort) {
@@ -233,6 +238,7 @@ export default function usePdfFetchAndDecode({ documentId, deviceId }: { documen
     watermarkDegraded,
     isHighValueDoc,
     isDownloadable,
+    securePdfRequestId,
     refetch: fetchPdf
   };
 }
