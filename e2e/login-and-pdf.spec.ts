@@ -39,7 +39,10 @@ test.describe("Login + PDF reader", () => {
     }
     await readLink.click();
     await expect(page).toHaveURL(/\/doc\/[^/]+\/read/, { timeout: 10000 });
-    await expect(page.locator("canvas").or(page.getByText(/đang tải|loading/i))).toBeVisible({ timeout: 15000 });
-    await expect(page.locator("canvas")).toBeVisible({ timeout: 20000 });
+    // P0: secure-pdf forces SSW image mode for all documents,
+    // so UI may render <img alt="Trang ..."> instead of <canvas>.
+    const pdfOrImage = page.locator("canvas").or(page.locator("img[alt^='Trang']"));
+    await expect(pdfOrImage.or(page.getByText(/đang tải|loading/i))).toBeVisible({ timeout: 20000 });
+    await expect(pdfOrImage).toBeVisible({ timeout: 20000 });
   });
 });

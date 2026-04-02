@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { runNextSecureDocumentAccess } from "@/lib/secure-access/run-next-secure-document-access";
@@ -66,8 +67,10 @@ export async function POST(req: Request) {
             }
         }
 
-        // Forensic ID for steganography: combining wmShort and parts of deviceId for uniqueness
-        const forensicId = `D2S:${access.ctx.watermark.wmShort}:${access.ctx.deviceId.slice(0, 4)}`;
+        // Forensic ID for steganography: keep stable prefix, but increase uniqueness vs using only deviceId.slice(0,4).
+        // (Used as the hidden message body for steganography.)
+        const deviceSig = createHash("sha256").update(access.ctx.deviceId).digest("hex").slice(0, 8);
+        const forensicId = `D2S:${access.ctx.watermark.wmShort}:${deviceSig}`;
 
         const imageBuffer = await rasterizePdfPage(pdfBuffer, page, {
             watermarkText: access.ctx.watermark.wmShort,
@@ -75,8 +78,10 @@ export async function POST(req: Request) {
             scale: 2.0 // High res
         });
 
-        // 4. Log success
-        await access.ctx.logSuccess();
+        // 4. (P0) Do not call logSuccess here.
+        // If we log success per page, the secure access rate limit would be counted
+        // for every rasterized page (double-counting). We want the hourly quota
+        // to be driven by the "open document" flow (secure-pdf), not per-page renders.
 
         // 5. Return image
         return new NextResponse(new Uint8Array(imageBuffer), {

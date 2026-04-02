@@ -203,32 +203,11 @@ serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    if (!activeSession) {
-      await logAccess(supabase, user.id, document_id, "get_secure_link", "blocked", req, device_id, "no_active_session", requestId, Date.now() - startedAt);
-      await insertSecurityLog(
-        supabase,
-        user.id,
-        "file_access",
-        "medium",
-        req,
-        device_id,
-        { reason: "no_active_session" },
-        requestId
-      );
-      await logObservability(supabase, {
-        requestId, source: "edge.get_secure_link", eventType: "blocked", severity: "warn",
-        statusCode: 401, latencyMs: Date.now() - startedAt, userId: user.id, documentId: document_id, deviceId: device_id,
-        metadata: { reason: "no_active_session" },
-      });
-      return jsonResponse(req, {
-        error: "Phiên chưa được đăng ký. Vui lòng vào Tủ sách rồi mở Đọc.",
-        reason: "no_active_session",
-        request_id: requestId,
-      }, 403, requestId);
-    }
+    // P0: If no active_sessions exist, auto-create one (align with single-session contract).
+    const needsActiveSessionCreate = !activeSession;
 
     const isSuperAdmin = computeIsSuperAdmin(profile);
-    if (activeSession.device_id && activeSession.device_id !== device_id && !isSuperAdmin) {
+    if (activeSession?.device_id && activeSession.device_id !== device_id && !isSuperAdmin) {
       await logAccess(supabase, user.id, document_id, "get_secure_link", "blocked", req, device_id, "device_mismatch", requestId, Date.now() - startedAt);
       await insertSecurityLog(
         supabase,
@@ -276,6 +255,29 @@ serve(async (req) => {
         device_info: { user_agent: req.headers.get("user-agent") ?? "" },
         last_login: new Date().toISOString(),
       });
+    }
+
+    if (needsActiveSessionCreate) {
+      // Enforce single-session by deleting existing rows for this user (defensive against races).
+      const sessionId = crypto.randomUUID();
+      await supabase.from("active_sessions").delete().eq("user_id", user.id);
+      await supabase.from("active_sessions").insert({
+        session_id: sessionId,
+        user_id: user.id,
+        ip_address: ipFromReq(req),
+        user_agent: req.headers.get("user-agent") ?? "",
+        device_id,
+      });
+      await insertSecurityLog(
+        supabase,
+        user.id,
+        "file_access",
+        "medium",
+        req,
+        device_id,
+        { reason: "auto_created_active_session", session_id: sessionId },
+        requestId
+      );
     }
 
     const isAdminCanReadAny = computeIsAdminCanReadAny(profile);

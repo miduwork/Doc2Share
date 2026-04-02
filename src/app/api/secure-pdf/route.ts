@@ -21,78 +21,32 @@ export async function POST(req: Request) {
     });
     if (!access.ok) return access.response;
 
-    // Phase 3: Zero-Vector Hardening
-    // Nếu là tài liệu nhạy cảm cao, chặn hoàn toàn việc tải PDF vector.
-    // Trả về headers để client biết cần chuyển sang chế độ SSW (Image Mode).
-    if (access.ctx.isHighValue) {
-      return NextResponse.json(
-        {
-          error: "Tài liệu này yêu cầu chế độ bảo vệ nâng cao (SSW).",
-          is_high_value: true,
-          num_pages: access.ctx.numPages,
-          is_downloadable: access.ctx.isDownloadable
-        },
-        {
-          status: 403,
-          headers: {
-            "X-D2S-Is-High-Value": "true",
-            "X-D2S-Num-Pages": String(access.ctx.numPages),
-            "X-D2S-Is-Downloadable": access.ctx.isDownloadable ? "true" : "false",
-          }
-        }
-      );
-    }
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/pdf",
-      "Cache-Control": "private, no-store",
-      "X-D2S-WM-Short": access.ctx.watermark.wmShort,
-      "X-D2S-WM-Doc-Short": access.ctx.watermark.wmDocShort,
-      "X-D2S-WM-Issued-At-Bucket": access.ctx.watermark.wmIssuedAtBucket,
-      "X-D2S-WM-Version": access.ctx.watermark.wmVersion,
-      "X-D2S-Is-Downloadable": access.ctx.isDownloadable ? "true" : "false",
-    };
-
-    // Ưu tiên stream để giảm peak RAM và có thể cải thiện TTFB với PDF lớn.
-    const { data: stream, error: streamError } = await access.ctx.service.storage
-      .from("private_documents")
-      .download(access.ctx.filePath)
-      .asStream();
-
-    if (!streamError && stream) {
-      await access.ctx.logSuccess();
-      return new NextResponse(stream as unknown as ReadableStream, {
-        status: 200,
-        headers,
-      });
-    }
-
-    if (streamError) {
-      console.error("secure-pdf: stream download error", streamError);
-    }
-
-    // Fallback (ít rủi ro): quay lại cách cũ nếu stream không khả dụng.
-    const { data: blob, error: downloadError } = await access.ctx.service.storage
-      .from("private_documents")
-      .download(access.ctx.filePath);
-
-    if (downloadError || !blob) {
-      console.error("secure-pdf: download error", downloadError);
-      return NextResponse.json({ error: "Không thể tải tài liệu." }, { status: 500 });
-    }
-
+    // P1: dù trả 403 để ép về image-mode, vẫn tính đây là một "success view" cho audit/rate-limit semantics.
     await access.ctx.logSuccess();
 
-    const buffer = await blob.arrayBuffer();
-    const finalHeaders = { ...headers };
-    if (typeof (blob as any)?.size === "number") {
-      finalHeaders["Content-Length"] = String((blob as any).size);
-    }
-
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: finalHeaders,
-    });
+    // P0: Zero-vector enforcement for ALL documents.
+    // Always route client to SSW (image mode) so we never return vector PDF.
+    return NextResponse.json(
+      {
+        error: "Tài liệu này yêu cầu chế độ bảo vệ nâng cao (SSW).",
+        is_high_value: true,
+        num_pages: access.ctx.numPages,
+        is_downloadable: access.ctx.isDownloadable
+      },
+      {
+        status: 403,
+        headers: {
+          "X-D2S-Request-ID": requestId,
+          "X-D2S-Is-High-Value": "true",
+          "X-D2S-Num-Pages": String(access.ctx.numPages),
+          "X-D2S-Is-Downloadable": access.ctx.isDownloadable ? "true" : "false",
+          "X-D2S-WM-Short": access.ctx.watermark.wmShort,
+          "X-D2S-WM-Doc-Short": access.ctx.watermark.wmDocShort,
+          "X-D2S-WM-Issued-At-Bucket": access.ctx.watermark.wmIssuedAtBucket,
+          "X-D2S-WM-Version": access.ctx.watermark.wmVersion
+        }
+      }
+    );
   } catch (err) {
     console.error("secure-pdf:", err);
     return NextResponse.json(
