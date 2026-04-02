@@ -12,6 +12,7 @@ import { collectHardwareFingerprint } from "@/lib/auth/fingerprint";
 type ErrBody = {
   error?: string;
   code?: string;
+  reason?: string;
   retry_after_seconds?: number;
   is_high_value?: boolean;
   is_downloadable?: boolean;
@@ -83,7 +84,11 @@ export default function usePdfFetchAndDecode({ documentId, deviceId }: { documen
 
         // Optimistic Auto-Heal: If the backend complains about no active session for this device
         // we intercept it and auto-register the device instead of failing immediately.
-        if (res.status === 403 && body.code === "SESSION_BINDING_FAILED") {
+        if (
+          res.status === 403 &&
+          body.code === "SESSION_BINDING_FAILED" &&
+          body.reason === "no_active_session"
+        ) {
           const reg = await registerDeviceAndSession(deviceId, signalsSummary, hardwareHash);
           if (reg.ok) {
             let fetchDeviceId = deviceId;

@@ -51,48 +51,68 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     try {
-        // 1. Validate nonce
-        const { data: ott, error: ottError } = await supabase
+        // 1) Atomic "mark used" (prevents race between 2 concurrent requests)
+        // Only succeeds for a not-used, not-expired nonce.
+        const nowIso = new Date().toISOString();
+        const {
+            data: updatedOttRows,
+            error: updateError,
+        } = await supabase
             .from("ott_nonces")
-            .select("id, storage_path, expires_at, used")
+            .update({ used: true })
             .eq("id", nonce)
-            .maybeSingle();
+            .eq("used", false)
+            .gt("expires_at", nowIso)
+            .select("storage_path");
 
-        if (ottError || !ott) {
+        if (updateError) {
+            throw updateError;
+        }
+
+        const updatedOtt = Array.isArray(updatedOttRows)
+            ? updatedOttRows[0]
+            : updatedOttRows;
+
+        if (!updatedOtt?.storage_path) {
+            // Follow-up classification (what failed?) when atomic update matched 0 rows.
+            const { data: existingOtt, error: ottError } = await supabase
+                .from("ott_nonces")
+                .select("used, expires_at")
+                .eq("id", nonce)
+                .maybeSingle();
+
+            if (ottError || !existingOtt) {
+                return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+                    status: 403,
+                    headers: { ...corsHeadersForRequest(req), "Content-Type": "application/json" },
+                });
+            }
+
+            if (existingOtt.used) {
+                return new Response(JSON.stringify({ error: "Token already used" }), {
+                    status: 410,
+                    headers: { ...corsHeadersForRequest(req), "Content-Type": "application/json" },
+                });
+            }
+
+            if (new Date(existingOtt.expires_at) < new Date()) {
+                return new Response(JSON.stringify({ error: "Token expired" }), {
+                    status: 410,
+                    headers: { ...corsHeadersForRequest(req), "Content-Type": "application/json" },
+                });
+            }
+
+            // Should be rare: conditions are satisfied but atomic update didn't return a row.
             return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
                 status: 403,
                 headers: { ...corsHeadersForRequest(req), "Content-Type": "application/json" },
             });
         }
 
-        if (ott.used) {
-            return new Response(JSON.stringify({ error: "Token already used" }), {
-                status: 410,
-                headers: { ...corsHeadersForRequest(req), "Content-Type": "application/json" },
-            });
-        }
-
-        if (new Date(ott.expires_at) < new Date()) {
-            return new Response(JSON.stringify({ error: "Token expired" }), {
-                status: 410,
-                headers: { ...corsHeadersForRequest(req), "Content-Type": "application/json" },
-            });
-        }
-
-        // 2. Mark as used
-        const { error: updateError } = await supabase
-            .from("ott_nonces")
-            .update({ used: true })
-            .eq("id", nonce);
-
-        if (updateError) {
-            throw updateError;
-        }
-
-        // 3. Create real signed URL (very short TTL: 5s)
+        // 2) Create real signed URL (very short TTL: 5s)
         const { data: signedData, error: signError } = await supabase.storage
             .from("private_documents")
-            .createSignedUrl(ott.storage_path, 5);
+            .createSignedUrl(updatedOtt.storage_path, 5);
 
         if (signError || !signedData?.signedUrl) {
             return new Response(JSON.stringify({ error: "Failed to generate download link" }), {

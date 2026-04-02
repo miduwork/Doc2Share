@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import {
     handleSePayWebhook,
     isSePayAuthorized,
@@ -7,7 +8,10 @@ import {
 
 export async function POST(request: Request) {
     // Audit log for all incoming webhook attempts
-    console.log(`[Webhook] Incoming SePay request: ${request.method} ${request.url}`);
+    const requestId = request.headers.get("x-request-id") ?? randomUUID();
+    console.log(
+        `[Webhook] Incoming SePay request: ${request.method} ${request.url} (requestId=${requestId})`,
+    );
 
     if (!isSePayAuthorized(request)) {
         console.warn("[Webhook] SePay Unauthorized attempt", {
@@ -28,7 +32,7 @@ export async function POST(request: Request) {
         );
     }
 
-    const result = await handleSePayWebhook(parsed.payload);
+    const result = await handleSePayWebhook(parsed.payload, requestId);
     if (!result.ok) {
         return NextResponse.json(
             { success: false, error: result.error },

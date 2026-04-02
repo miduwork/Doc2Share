@@ -327,7 +327,14 @@ export async function runNextSecureDocumentAccess({
           ok: false,
           response: logBlocked(
             "no_active_session",
-            NextResponse.json({ error: toSessionBindingErrorMessage("no_active_session"), code: "SESSION_BINDING_FAILED" }, { status: 403 })
+              NextResponse.json(
+                {
+                  error: toSessionBindingErrorMessage("no_active_session"),
+                  code: "SESSION_BINDING_FAILED",
+                  reason: sessionGate.reason,
+                },
+                { status: 403 }
+              )
           ),
         };
       }
@@ -335,7 +342,14 @@ export async function runNextSecureDocumentAccess({
         ok: false,
         response: logBlocked(
           "device_mismatch",
-          NextResponse.json({ error: toSessionBindingErrorMessage("device_mismatch"), code: "SESSION_BINDING_FAILED" }, { status: 403 })
+            NextResponse.json(
+              {
+                error: toSessionBindingErrorMessage("device_mismatch"),
+                code: "SESSION_BINDING_FAILED",
+                reason: sessionGate.reason,
+              },
+              { status: 403 }
+            )
         ),
       };
     }
