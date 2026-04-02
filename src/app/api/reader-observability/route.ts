@@ -52,8 +52,13 @@ export async function POST(req: Request) {
     const now = Date.now();
 
     // Eviction: remove expired keys to avoid Map growing over time.
-    for (const [key, v] of rateLimits.entries()) {
-      if (now > v.resetAt) rateLimits.delete(key);
+    // Avoid `for..of rateLimits.entries()` to keep TS compatible with lower targets.
+    const keysToDelete: string[] = [];
+    rateLimits.forEach((v, key) => {
+      if (now > v.resetAt) keysToDelete.push(key);
+    });
+    for (let i = 0; i < keysToDelete.length; i += 1) {
+      rateLimits.delete(keysToDelete[i]);
     }
 
     // Key by user_id so changing IP headers can't bypass.
@@ -69,9 +74,14 @@ export async function POST(req: Request) {
 
     // Hard cap: if something goes wrong and we still keep growing (rare), prune oldest buckets.
     if (rateLimits.size > 2000) {
-      const sorted = Array.from(rateLimits.entries()).sort((a, b) => a[1].resetAt - b[1].resetAt);
-      for (const [k] of sorted.slice(0, rateLimits.size - 1500)) {
-        rateLimits.delete(k);
+      const buckets: Array<{ key: string; resetAt: number }> = [];
+      rateLimits.forEach((v, key) => {
+        buckets.push({ key, resetAt: v.resetAt });
+      });
+      buckets.sort((a, b) => a.resetAt - b.resetAt);
+      const pruneCount = rateLimits.size - 1500;
+      for (let i = 0; i < pruneCount; i += 1) {
+        rateLimits.delete(buckets[i].key);
       }
     }
 
